@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 
 import 'package:pacman/screen.dart';
-import 'package:window_manager/window_manager.dart';
+// import 'package:window_manager/window_manager.dart';
 
 void main() async {
   // windowManager.waitUntilReadyToShow().then((value) async {
@@ -25,9 +25,10 @@ class PacMan extends StatefulWidget {
 class _PacManState extends State<PacMan> {
   static int _numberOfRows = 11;
   static int _numberOfSquares = _numberOfRows * 16;
+
   bool still = true;
   int score = 0;
-  List <int> eatenFood = [];
+  List<int> eatenFood = [];
   List<int> barriers = [
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, //top wall
     11, 22, 33, 44, 55, 66, 77, 88, 99, 110, 121, 132, 143, 154, 165, // l wall
@@ -48,8 +49,9 @@ class _PacManState extends State<PacMan> {
 
   int squarePos = 159;
   int direction = 0;
+  int pacDirection = 3;
   List<int> ghosts = [159, 70, 71, 72];
-  List<int> ate = [4,5];
+  List<int> ate = [4, 5];
   checkLose(newPos) {
     if (ghosts.getRange(1, 4).contains(newPos)) {
       setState(() {
@@ -66,6 +68,54 @@ class _PacManState extends State<PacMan> {
     return nextMove;
   }
 
+  _moveRight() {
+    setState(() {
+      pacDirection = 3;
+      if (!barriers.contains(ghosts[0] + 1)) {
+        ghosts[0] = ghosts[0] + 1;
+        if (!eatenFood.contains(ghosts[0])) {
+          eatenFood.add(ghosts[0]);
+        }
+      }
+    });
+  }
+
+  _moveDown() {
+    setState(() {
+      pacDirection = 1;
+      if (!barriers.contains(ghosts[0] + 11)) {
+        ghosts[0] = ghosts[0] + 11;
+        if (!eatenFood.contains(ghosts[0])) {
+          eatenFood.add(ghosts[0]);
+        }
+      }
+    });
+  }
+
+  _moveLeft() {
+    setState(() {
+      pacDirection = 2;
+      if (!barriers.contains(ghosts[0] - 1)) {
+        ghosts[0] = ghosts[0] - 1;
+        if (!eatenFood.contains(ghosts[0])) {
+          eatenFood.add(ghosts[0]);
+        }
+      }
+    });
+  }
+
+  _moveUp() {
+    setState(() {
+      pacDirection = 0;
+      if (!barriers.contains(ghosts[0] - 11)) {
+        ghosts[0] = ghosts[0] - 11;
+        if (!eatenFood.contains(ghosts[0])) {
+          eatenFood.add(ghosts[0]);
+        }
+      }
+    });
+  }
+
   _moveGhost(pos) {
     print([pos, ghosts]);
     int n = _nextMove();
@@ -74,13 +124,12 @@ class _PacManState extends State<PacMan> {
         if (pos == 0 && !barriers.contains(ghosts[pos] - 11)) {
           direction = 0;
         }
-        if (!barriers.contains(ghosts[pos] - 11))
-          {
-            ghosts[pos] = ghosts[pos] - 11;
-            if( pos == 0 && !eatenFood.contains(ghosts[pos])){
-              eatenFood.add(ghosts[pos]);
-            }
+        if (!barriers.contains(ghosts[pos] - 11)) {
+          ghosts[pos] = ghosts[pos] - 11;
+          if (pos == 0 && !eatenFood.contains(ghosts[pos])) {
+            eatenFood.add(ghosts[pos]);
           }
+        }
       });
     } else if (n == 1) {
       setState(() {
@@ -94,10 +143,10 @@ class _PacManState extends State<PacMan> {
       });
     } else if (n == 2) {
       setState(() {
-        if (pos == 2 && !barriers.contains(ghosts[pos] - 1))  direction = 2;
+        if (pos == 2 && !barriers.contains(ghosts[pos] - 1)) direction = 2;
         if (!barriers.contains(ghosts[pos] - 1)) {
           ghosts[pos] = ghosts[pos] - 1;
-          if( pos == 0 && !eatenFood.contains(ghosts[pos])){
+          if (pos == 0 && !eatenFood.contains(ghosts[pos])) {
             eatenFood.add(ghosts[pos]);
           }
         }
@@ -107,13 +156,13 @@ class _PacManState extends State<PacMan> {
         if (pos == 3 && !barriers.contains(ghosts[pos] + 1)) direction = 3;
         if (!barriers.contains(ghosts[pos] + 1)) {
           ghosts[pos] = ghosts[pos] + 1;
-          if( pos == 0 && !eatenFood.contains(ghosts[pos])){
+          if (pos == 0 && !eatenFood.contains(ghosts[pos])) {
             eatenFood.add(ghosts[pos]);
           }
         }
       });
     }
-    if (pos == 0) checkLose(ghosts[0]);
+    checkLose(ghosts[0]);
     Future.delayed(const Duration(milliseconds: 100)).then((value) {
       if (still) _moveGhost(pos);
     });
@@ -123,10 +172,21 @@ class _PacManState extends State<PacMan> {
   void initState() {
     super.initState();
 
-    _moveGhost(0);
+    // _moveGhost(0);
+    _movePacMan();
     _moveGhost(1);
     _moveGhost(2);
     _moveGhost(3);
+  }
+
+  _movePacMan() {
+    Future.delayed(Duration(milliseconds: 400)).then((value) {
+      if (pacDirection == 0) _moveUp();
+      if (pacDirection == 1) _moveDown();
+      if (pacDirection == 2) _moveLeft();
+      if (pacDirection == 3) _moveRight();
+      _movePacMan();
+    });
   }
 
   @override
@@ -135,7 +195,7 @@ class _PacManState extends State<PacMan> {
       backgroundColor: Colors.black,
       body: Column(children: [
         Expanded(
-          flex: 5,
+          flex: 7,
           child: SizedBox(
             child: GridView.builder(
                 itemCount: _numberOfSquares,
@@ -149,8 +209,7 @@ class _PacManState extends State<PacMan> {
                         isGhost: false,
                         isFood: false,
                         isPac: true,
-                        direction: direction
-                    );
+                        direction: pacDirection);
                   } else if (ghosts[1] == index) {
                     return Padding(
                       padding: const EdgeInsets.all(8.0),
@@ -186,10 +245,89 @@ class _PacManState extends State<PacMan> {
           ),
         ),
         Expanded(
+          flex: 2,
           child: Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Container(
-                color: Colors.red, child: Center(child: Text("score: ${eatenFood.length}"))),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                      color: Colors.red,
+                      child: Center(child: Text("score: ${eatenFood.length}"))),
+                ),
+                Container(
+                  width: 200,
+                  child: Row(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Container(
+                          width: 50,
+                          height: 50,
+                          color: Colors.blue,
+                          child: TextButton(
+                              onPressed: _moveLeft,
+                              child: const Center(
+                                  child: Icon(
+                                Icons.arrow_back,
+                                color: Colors.white,
+                              ))),
+                        ),
+                      ),
+                      Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Container(
+                              width: 50,
+                              height: 50,
+                              color: Colors.blue,
+                              child: TextButton(
+                                  onPressed: _moveUp,
+                                  child: const Center(
+                                      child: Icon(
+                                    Icons.arrow_upward,
+                                    color: Colors.white,
+                                  ))),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Container(
+                              width: 50,
+                              height: 50,
+                              color: Colors.blue,
+                              child: TextButton(
+                                  onPressed: _moveDown,
+                                  child: const Center(
+                                      child: Icon(
+                                    Icons.arrow_downward,
+                                    color: Colors.white,
+                                  ))),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Container(
+                          width: 50,
+                          height: 50,
+                          color: Colors.blue,
+                          child: TextButton(
+                              onPressed: _moveRight,
+                              child: const Center(
+                                  child: Icon(
+                                Icons.arrow_forward,
+                                color: Colors.white,
+                              ))),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              ],
+            ),
           ),
         ),
       ]),
@@ -209,7 +347,7 @@ class Pixel extends StatelessWidget {
       required this.isGhost,
       required this.isFood,
       required this.isPac,
-        this.direction,
+      this.direction,
       Key? key})
       : super(key: key);
 
@@ -236,10 +374,10 @@ class Pixel extends StatelessWidget {
 
   static double down = 1.6;
   static double up = -1.6;
-  static double backward = -1.6;
+  static double backward = -3.2;
   static double forward = 0;
 
-  getDirection(){
+  getDirection() {
     if (direction! == 0) return up;
     if (direction! == 1) return down;
     if (direction! == 2) return backward;
@@ -249,16 +387,18 @@ class Pixel extends StatelessWidget {
   pac() {
     return Padding(
         padding: const EdgeInsets.all(3),
-        child: Transform.rotate(angle: getDirection() , child: Image.asset(
-          "assets/imgs/pacman.png",
-          width: 10,
-          height: 10,
-
-        ),));
+        child: Transform.rotate(
+          angle: getDirection(),
+          child: Image.asset(
+            "assets/imgs/pacman.png",
+            width: 10,
+            height: 10,
+          ),
+        ));
   }
-  
-  food(){
-    return  Padding(
+
+  food() {
+    return Padding(
       padding: const EdgeInsets.all(1),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(4),
@@ -269,8 +409,7 @@ class Pixel extends StatelessWidget {
               width: 10,
               height: 10,
               decoration: BoxDecoration(
-                  color: Colors.yellow,
-                  borderRadius: BorderRadius.circular(5)),
+                  color: Colors.yellow, borderRadius: BorderRadius.circular(5)),
             ),
           ),
         ),
