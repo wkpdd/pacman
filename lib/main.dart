@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'dart:math';
 
@@ -57,8 +59,37 @@ class _PacManState extends State<PacMan> {
       setState(() {
         still = false;
       });
-      Navigator.push(
-          context, MaterialPageRoute(builder: (context) => const Faild()));
+      showModalBottomSheet(
+          context: context,
+          builder: (context) {
+            return Container(
+              height: 300,
+              color: Colors.red,
+              child: Column(
+                children: [
+                  const Text(
+                    "You Lost",
+                    style: TextStyle(fontSize: 20, color: Colors.white),
+                  ),
+                  TextButton(
+                      onPressed: () {
+                        setState(() {
+                          eatenFood.clear();
+                          ghosts = [159, 70, 71, 72];
+                          still = true;
+                        });
+                        _movePacMan();
+                        _moveGhost(1);
+                        _moveGhost(2);
+                        _moveGhost(3);
+                      },
+                      child: const Text("Restart"))
+                ],
+              ),
+            );
+          });
+      // Navigator.push(
+      //     context, MaterialPageRoute(builder: (context) => const Faild()));
     }
   }
 
@@ -189,6 +220,18 @@ class _PacManState extends State<PacMan> {
     });
   }
 
+  _restart() {
+    setState(() {
+      eatenFood.clear();
+      ghosts = [159, 70, 71, 72];
+      still = true;
+      _movePacMan();
+      _moveGhost(1);
+      _moveGhost(2);
+      _moveGhost(3);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -251,9 +294,22 @@ class _PacManState extends State<PacMan> {
             child: Row(
               children: [
                 Expanded(
-                  child: Container(
-                      color: Colors.red,
-                      child: Center(child: Text("score: ${eatenFood.length}"))),
+                  child: Column(
+                    children: [
+                      Container(
+                          color: Colors.red,
+                          child: Center(
+                              child: Text("score: ${eatenFood.length}"))),
+                      TextButton(
+                        child: Text("Exit"),
+                        onPressed: () => exit(1),
+                      ),
+                      TextButton(
+                        child: Text("Restart"),
+                        onPressed: () => _restart(),
+                      ),
+                    ],
+                  ),
                 ),
                 Container(
                   width: 200,
