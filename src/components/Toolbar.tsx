@@ -10,10 +10,23 @@ interface Props {
   onOpenCalculator: () => void
   onExportClientPdf: () => void
   onExportWorkerPdf: () => void
+  onConvertToInvoice: () => void
   saveStatus: 'idle' | 'saving' | 'saved'
+  busy?: boolean
+  invoiceNumber?: string
 }
 
-export function Toolbar({ onOpenSettings, onOpenDesigns, onOpenCalculator, onExportClientPdf, onExportWorkerPdf, saveStatus }: Props): React.JSX.Element {
+export function Toolbar({
+  onOpenSettings,
+  onOpenDesigns,
+  onOpenCalculator,
+  onExportClientPdf,
+  onExportWorkerPdf,
+  onConvertToInvoice,
+  saveStatus,
+  busy,
+  invoiceNumber
+}: Props): React.JSX.Element {
   const { t } = useTranslation()
   const undo = useCanvasStore((s) => s.undo)
   const redo = useCanvasStore((s) => s.redo)
@@ -52,8 +65,19 @@ export function Toolbar({ onOpenSettings, onOpenDesigns, onOpenCalculator, onExp
         <span className={`save-status save-${saveStatus}`}>
           {saveStatus === 'saving' ? t('app.saving') : t('app.saved')}
         </span>
-        <button onClick={onExportClientPdf} className="btn-export">📄 {t('pdf.client')}</button>
-        <button onClick={onExportWorkerPdf} className="btn-export">🛠 {t('pdf.worker')}</button>
+        <button onClick={onExportClientPdf} className="btn-export" disabled={busy}>
+          {busy ? '⏳' : '📄'} {t('pdf.client')}
+        </button>
+        <button onClick={onExportWorkerPdf} className="btn-export" disabled={busy}>
+          {busy ? '⏳' : '🛠'} {t('pdf.worker')}
+        </button>
+        {invoiceNumber ? (
+          <span className="invoice-pill" title="Numéro de facture">N° {invoiceNumber}</span>
+        ) : (
+          <button onClick={onConvertToInvoice} className="btn-export" disabled={busy} title="Convertir en facture">
+            🧾 Facturer
+          </button>
+        )}
         <select
           value={tenant?.lang ?? 'fr'}
           onChange={(e) => changeLang(e.target.value as Lang)}

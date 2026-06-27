@@ -17,7 +17,8 @@ export function exportClientProposal(
   renderDataUrl: string
 ): void {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  drawHeader(doc, tenant, 'Proposition')
+  const isInvoice = !!design.invoiceNumber
+  drawHeader(doc, tenant, isInvoice ? `Facture ${design.invoiceNumber}` : 'Proposition')
 
   doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')

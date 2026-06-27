@@ -141,6 +141,14 @@ input:focus, select:focus, textarea:focus {
 }
 .lang-select { background: #1e293b; color: white; border-color: #334155; height: var(--target); }
 .save-status { font-size: 12px; opacity: 0.85; padding: 4px 8px; border-radius: 999px; background: #1e293b; }
+.invoice-pill {
+  background: var(--tint);
+  color: var(--ink);
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
 .save-saving { color: var(--tint); }
 .save-saved { color: #4ade80; }
 
@@ -403,6 +411,38 @@ input:focus, select:focus, textarea:focus {
   color: white;
   font-size: 14px;
 }
+
+/* ============ CONTEXT MENU ============ */
+.ctx-backdrop {
+  position: fixed; inset: 0;
+  z-index: 90;
+}
+.ctx-menu {
+  position: fixed;
+  z-index: 91;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  min-width: 200px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+.ctx-menu li { display: block; }
+.ctx-menu button {
+  width: 100%;
+  text-align: start;
+  background: transparent;
+  border: 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  min-height: 48px;
+}
+.ctx-menu button:hover { background: var(--tint-soft); }
+.ctx-menu button.danger { color: var(--danger); }
+.prop-actions button.on { background: var(--ink); color: white; border-color: var(--ink); }
 
 /* ============ MOBILE BOTTOM SHEET ============ */
 .mobile-only { display: none; }

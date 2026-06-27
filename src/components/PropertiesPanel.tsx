@@ -12,6 +12,9 @@ export function PropertiesPanel(): React.JSX.Element {
   const patchData = useCanvasStore((s) => s.patchObjectData)
   const removeObject = useCanvasStore((s) => s.removeObject)
   const duplicateObject = useCanvasStore((s) => s.duplicateObject)
+  const toggleLock = useCanvasStore((s) => s.toggleLock)
+  const bringForward = useCanvasStore((s) => s.bringForward)
+  const sendBackward = useCanvasStore((s) => s.sendBackward)
 
   return (
     <aside className="properties-panel">
@@ -106,6 +109,13 @@ export function PropertiesPanel(): React.JSX.Element {
 
           <div className="prop-actions">
             <button onClick={() => duplicateObject(obj.id)}>⧉ {t('app.duplicate')}</button>
+            <button className={obj.locked ? 'on' : ''} onClick={() => toggleLock(obj.id)}>
+              {obj.locked ? '🔒 Verrouillé' : '🔓 Verrouiller'}
+            </button>
+          </div>
+          <div className="prop-actions">
+            <button onClick={() => sendBackward(obj.id)} title="Reculer">⤓</button>
+            <button onClick={() => bringForward(obj.id)} title="Avancer">⤒</button>
             <button className="danger" onClick={() => removeObject(obj.id)}>🗑 {t('app.delete')}</button>
           </div>
         </section>

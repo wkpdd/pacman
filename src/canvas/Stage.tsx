@@ -10,7 +10,11 @@ import { polylineLengthM } from '@/utils/units'
 const GRID_STEP_CM = 10
 const SNAP_THRESHOLD_CM = 8 // generous on touch — forgiving hit areas
 
-export function CanvasStage(): React.JSX.Element {
+interface StageProps {
+  onContextRequest: (info: { objectId: string; screenX: number; screenY: number }) => void
+}
+
+export function CanvasStage({ onContextRequest }: StageProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const { width: vw, height: vh } = useContainerSize(containerRef)
   const stageRef = useRef<Konva.Stage>(null)
@@ -214,6 +218,10 @@ export function CanvasStage(): React.JSX.Element {
               allObjects={objects}
               room={room}
               scale={scale}
+              onContext={(screenX, screenY) => {
+                select(o.id)
+                onContextRequest({ objectId: o.id, screenX, screenY })
+              }}
             />
           ))}
           <Transformer
@@ -382,6 +390,7 @@ interface ObjectProps {
   setGuides: React.Dispatch<React.SetStateAction<Array<{ kind: 'v' | 'h'; pos: number }>>>
   allObjects: PlacedObject[]
   room: { width: number; length: number; height: number }
+  onContext: (screenX: number, screenY: number) => void
 }
 
 function ObjectShape({
@@ -392,8 +401,32 @@ function ObjectShape({
   onChange,
   setGuides,
   allObjects,
-  room
+  room,
+  onContext
 }: ObjectProps): React.JSX.Element {
+  // Long-press → context menu (mobile). On desktop, native right-click works.
+  const longPressTimer = useRef<number | null>(null)
+  const longPressFired = useRef(false)
+  const startLongPress = (e: Konva.KonvaEventObject<TouchEvent>) => {
+    const t = e.evt.touches[0]
+    if (!t) return
+    longPressFired.current = false
+    longPressTimer.current = window.setTimeout(() => {
+      longPressFired.current = true
+      onContext(t.clientX, t.clientY)
+    }, 550)
+  }
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }
+  const onCtx = (e: Konva.KonvaEventObject<PointerEvent | MouseEvent>) => {
+    e.evt.preventDefault()
+    const evt = e.evt as PointerEvent
+    onContext(evt.clientX ?? 0, evt.clientY ?? 0)
+  }
   const onDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
     const node = e.target
     const tentative: PlacedObject = { ...obj, x: node.x(), y: node.y() }
@@ -432,8 +465,17 @@ function ObjectShape({
     onDragMove,
     onDragEnd,
     onTransformEnd,
-    onClick: onSelect,
-    onTap: onSelect
+    onClick: (e: Konva.KonvaEventObject<MouseEvent>) => {
+      if (longPressFired.current) return
+      onSelect()
+      // also surface right-click context
+      if ((e.evt as MouseEvent).button === 2) onCtx(e as Konva.KonvaEventObject<MouseEvent>)
+    },
+    onTap: () => { if (!longPressFired.current) onSelect() },
+    onContextMenu: onCtx,
+    onTouchStart: startLongPress,
+    onTouchEnd: cancelLongPress,
+    onTouchMove: cancelLongPress
   } satisfies Konva.NodeConfig & { id: string }
 
   // Spotlight (single)

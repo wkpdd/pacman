@@ -72,3 +72,21 @@ export async function saveTenant(t: Tenant): Promise<void> {
     createdAt: Date.now()
   })
 }
+
+/**
+ * Assign the next sequential invoice number for a tenant, in the form
+ * `YYYY-NNNNN`. Counts existing invoiced designs and increments. Done
+ * locally — server side would reconcile under last-write-wins.
+ */
+export async function nextInvoiceNumber(tenantId: string): Promise<string> {
+  const year = new Date().getFullYear()
+  const prefix = `${year}-`
+  const existing = await db.designs.where('tenantId').equals(tenantId).toArray()
+  const max = existing
+    .map((d) => d.invoiceNumber)
+    .filter((n): n is string => !!n && n.startsWith(prefix))
+    .map((n) => parseInt(n.slice(prefix.length), 10))
+    .filter((n) => Number.isFinite(n))
+    .reduce((a, b) => Math.max(a, b), 0)
+  return `${prefix}${String(max + 1).padStart(5, '0')}`
+}

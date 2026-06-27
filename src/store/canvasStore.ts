@@ -32,6 +32,9 @@ interface CanvasState {
   patchObjectData: (id: string, data: Partial<NonNullable<PlacedObject['data']>>) => void
   removeObject: (id: string) => void
   duplicateObject: (id: string) => void
+  toggleLock: (id: string) => void
+  bringForward: (id: string) => void
+  sendBackward: (id: string) => void
   select: (id: string | null) => void
   loadDesign: (d: Design) => void
   newDesign: () => void
@@ -155,6 +158,44 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         const copy: PlacedObject = { ...o, id: newId(), x: o.x + 20, y: o.y + 20 }
         s.objects.push(copy)
         s.selectionId = copy.id
+        s.isDirty = true
+      })
+    )
+    get().commit()
+  },
+
+  toggleLock: (id) => {
+    set(
+      produce<CanvasState>((s) => {
+        const o = s.objects.find((x) => x.id === id)
+        if (!o) return
+        o.locked = !o.locked
+        s.isDirty = true
+      })
+    )
+    get().commit()
+  },
+
+  bringForward: (id) => {
+    set(
+      produce<CanvasState>((s) => {
+        const i = s.objects.findIndex((x) => x.id === id)
+        if (i < 0 || i === s.objects.length - 1) return
+        const [item] = s.objects.splice(i, 1)
+        s.objects.push(item)
+        s.isDirty = true
+      })
+    )
+    get().commit()
+  },
+
+  sendBackward: (id) => {
+    set(
+      produce<CanvasState>((s) => {
+        const i = s.objects.findIndex((x) => x.id === id)
+        if (i <= 0) return
+        const [item] = s.objects.splice(i, 1)
+        s.objects.unshift(item)
         s.isDirty = true
       })
     )

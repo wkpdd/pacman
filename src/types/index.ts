@@ -86,6 +86,9 @@ export interface Design {
     paymentMode: PaymentMode
   }
   totals?: Totals
+  /** assigned when the design is converted to a facture */
+  invoiceNumber?: string
+  invoicedAt?: number
   createdAt: number
   updatedAt: number
   syncedAt?: number

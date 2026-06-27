@@ -10,10 +10,11 @@ import { SettingsModal } from '@/components/SettingsModal'
 import { DesignsModal } from '@/components/DesignsModal'
 import { QuickCalculator } from '@/components/QuickCalculator'
 import { ShareToast } from '@/components/ShareToast'
+import { ContextMenu } from '@/components/ContextMenu'
 import { useTenantStore } from '@/store/tenantStore'
 import { useCanvasStore } from '@/store/canvasStore'
 import { applyLang } from '@/i18n'
-import { saveDesign } from '@/store/db'
+import { saveDesign, nextInvoiceNumber } from '@/store/db'
 import { exportClientProposal } from '@/pdf/clientProposal'
 import { exportWorkerPlan } from '@/pdf/workerTechnical'
 import { formatDZD } from '@/utils/units'
@@ -26,8 +27,15 @@ export default function App(): React.JSX.Element {
   const [designsOpen, setDesignsOpen] = useState(false)
   const [calcOpen, setCalcOpen] = useState(false)
   const [toastOpen, setToastOpen] = useState(false)
+  const [ctx, setCtx] = useState<{ objectId: string; screenX: number; screenY: number } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [invoiceNumber, setInvoiceNumber] = useState<string | undefined>(undefined)
+  const allObjects = useCanvasStore((s) => s.objects)
+  const ctxObject = ctx ? allObjects.find((o) => o.id === ctx.objectId) ?? null : null
   const setRoom = useCanvasStore((s) => s.setRoom)
   const newDesign = useCanvasStore((s) => s.newDesign)
+  const designId = useCanvasStore((s) => s.designId)
+  useEffect(() => { setInvoiceNumber(undefined) }, [designId])
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [online, setOnline] = useState(navigator.onLine)
   const { design, result, options, setOptions, client, setClient } = useCalc()
@@ -67,20 +75,49 @@ export default function App(): React.JSX.Element {
 
   const select = useCanvasStore((s) => s.select)
   const onExportClient = async () => {
-    if (!tenant) return
-    // Drop selection so transformer handles / edit handles don't appear in the render
-    select(null)
-    await new Promise<void>((r) => requestAnimationFrame(() => r()))
-    const dataUrl = await captureStage('client')
-    exportClientProposal(tenant, design, result, dataUrl)
-    setToastOpen(true)
+    if (!tenant || busy) return
+    setBusy(true)
+    try {
+      // Drop selection so transformer handles / edit handles don't appear in the render
+      select(null)
+      await new Promise<void>((r) => requestAnimationFrame(() => r()))
+      const dataUrl = await captureStage('client')
+      exportClientProposal(tenant, design, result, dataUrl)
+      setToastOpen(true)
+    } finally {
+      setBusy(false)
+    }
   }
   const onExportWorker = async () => {
-    if (!tenant) return
-    select(null)
-    await new Promise<void>((r) => requestAnimationFrame(() => r()))
-    const dataUrl = await captureStage('plan')
-    exportWorkerPlan(tenant, design, result, dataUrl)
+    if (!tenant || busy) return
+    setBusy(true)
+    try {
+      select(null)
+      await new Promise<void>((r) => requestAnimationFrame(() => r()))
+      const dataUrl = await captureStage('plan')
+      exportWorkerPlan(tenant, design, result, dataUrl)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const onConvertToInvoice = async () => {
+    if (!tenant || busy) return
+    setBusy(true)
+    try {
+      const number = await nextInvoiceNumber(tenant.id)
+      const stamped = {
+        ...design,
+        tenantId: tenant.id,
+        totals: result.totals,
+        invoiceNumber: number,
+        invoicedAt: Date.now(),
+        status: 'invoiced' as const
+      }
+      await saveDesign(stamped)
+      setInvoiceNumber(number)
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -91,12 +128,15 @@ export default function App(): React.JSX.Element {
         onOpenCalculator={() => setCalcOpen(true)}
         onExportClientPdf={onExportClient}
         onExportWorkerPdf={onExportWorker}
+        onConvertToInvoice={onConvertToInvoice}
         saveStatus={saveStatus}
+        busy={busy}
+        invoiceNumber={invoiceNumber}
       />
       <main className="app-main">
         <LibraryTray />
         <section className="canvas-wrap">
-          <CanvasStage />
+          <CanvasStage onContextRequest={setCtx} />
           <span className={online ? 'net on' : 'net off'} title={online ? t('app.online') : t('app.offline')}>
             {online ? '● ' + t('app.online') : '○ ' + t('app.offline')}
           </span>
@@ -157,6 +197,9 @@ export default function App(): React.JSX.Element {
           designName={design.name}
           onClose={() => setToastOpen(false)}
         />
+      )}
+      {ctx && ctxObject && (
+        <ContextMenu x={ctx.screenX} y={ctx.screenY} obj={ctxObject} onClose={() => setCtx(null)} />
       )}
     </div>
   )
