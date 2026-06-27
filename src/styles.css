@@ -506,15 +506,32 @@ input:focus, select:focus, textarea:focus {
   .properties-panel { display: none; }
 }
 @media (max-width: 640px) {
-  .toolbar { grid-template-columns: 1fr auto auto; }
+  .toolbar {
+    grid-template-columns: auto 1fr auto;
+    padding: 6px 8px;
+    gap: 4px;
+    overflow-x: auto;
+  }
   .toolbar .design-name { display: none; }
   .toolbar .lang-select, .toolbar .save-status { display: none; }
-  .toolbar .btn-export { padding: 0 10px; font-size: 14px; }
+  .toolbar button {
+    min-width: 44px; height: 44px; padding: 0 8px;
+    font-size: 14px;
+  }
+  /* PDF buttons collapse to icons */
+  .toolbar .btn-export {
+    overflow: hidden;
+    max-width: 44px;
+    padding: 0;
+    text-indent: -1px;
+  }
+  .invoice-pill { font-size: 12px; padding: 6px 8px; }
   .app-main { grid-template-columns: 1fr; }
   .library-tray, .properties-panel, .cost-side { display: none; }
   .mobile-only { display: block; }
   .bottom-sheet { max-height: 70vh; }
-  .canvas-wrap { padding-bottom: 56px; }
+  .canvas-wrap { padding-bottom: 64px; }
+  .canvas-overlay-tools { bottom: 76px; }
 }
 
 /* ============ RTL ============ */

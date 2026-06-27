@@ -88,8 +88,20 @@ basis and **never printed on the client PDF**.
 ## Multi-tenancy & licensing
 
 - Each contractor is a tenant with their own branding, price catalog, language, RC/NIF/NIS/AI
-- A free stripped calculator becomes the lead magnet (roadmap)
-- License has an expiry timestamp; client-side enforcement degrades gracefully with a 7-day offline grace window
+- License has an expiry timestamp + a manual license-key entry; client-side enforcement degrades gracefully with a 7-day offline grace window
+- "Mode chantier" (outdoor / high-contrast) toggle for direct-sunlight readability
+
+## Lead magnet
+
+- **Quick Calculator** is a form-only modal (no canvas) — type room dimensions, toggle perimeter corniche / central rosace, set spot count and LED length, get full materials + price live. "Open in designer" promotes to the canvas with the room pre-sized.
+
+## In-app actions
+
+- **Long-press** an object (or right-click on desktop) opens a touch-friendly context menu: duplicate, lock/unlock, bring forward, send backward, delete.
+- **Convert to invoice**: assigns the next sequential per-tenant invoice number `YYYY-NNNNN`, stamps the design as `invoiced`, and the client PDF switches from "Proposition" to "Facture {number}".
+- **WhatsApp share**: after a PDF export, a toast surfaces a `wa.me` deep link with the client phone + quote summary + total pre-filled.
+- **Designs**: a 📂 button opens a saved-designs list (loaded from IndexedDB) so the contractor can reopen any past job.
+- **Sample design**: empty-canvas CTA loads a realistic salon (perimeter LED corniche + central rosace + 2 × 4 spot grid + LED tray polyline).
 
 ## Roadmap
 
@@ -99,3 +111,41 @@ basis and **never printed on the client PDF**.
 - Server-side high-fidelity PDF rendering (Laravel) as alternate path
 - Custom asset uploads per tenant
 - Portfolio sub-pages (per-tenant landing page with WhatsApp quote button)
+
+## File map
+
+```
+src/
+├─ App.tsx                              app shell + autosave + capture orchestration
+├─ canvas/
+│  ├─ Stage.tsx                         Konva stage + transformer + dims + gestures
+│  ├─ snapping.ts                       edge/centerline/grid/other-object snapping
+│  └─ viewport.ts                       container size + fit-to-room math
+├─ modules/faux-plafond/
+│  ├─ library.ts                        9 modules (corniche, rosace, spots, LED, retombée, …)
+│  ├─ defaults.ts                       Algerian baseline catalog + ratios (waste, F530, etc.)
+│  ├─ calculations.ts                   geometry → materials + decorative + totals
+│  └─ sample.ts                         representative salon for the empty-state CTA
+├─ store/
+│  ├─ canvasStore.ts                    Zustand + Immer + 60-step undo/redo
+│  ├─ db.ts                             Dexie (designs/tenants/sync_queue) + invoice numbering
+│  └─ tenantStore.ts                    active tenant + license grace
+├─ pdf/
+│  ├─ clientProposal.ts                 hero render + total (devis OR facture)
+│  ├─ workerTechnical.ts                dimensioned plan + shopping list
+│  └─ branding.ts                       header / footer / legal block
+├─ components/
+│  ├─ Toolbar.tsx                       new/open/calc/undo/redo/export/invoice/lang/⚙
+│  ├─ LibraryTray.tsx                   categorized module picker
+│  ├─ PropertiesPanel.tsx               room + selected-object editor + corniche sides
+│  ├─ CostPanel.tsx                     live totals + line items + options + client
+│  ├─ MobileBottomSheet.tsx             single tabbed sheet (cost/library/properties)
+│  ├─ ContextMenu.tsx                   long-press / right-click object actions
+│  ├─ DesignsModal.tsx                  load/delete saved designs
+│  ├─ SettingsModal.tsx                 tenant branding + legal + license + outdoor mode
+│  ├─ QuickCalculator.tsx               form-only lead-magnet calculator
+│  └─ ShareToast.tsx                    post-export wa.me deep link
+├─ i18n/                                fr, ar, en
+├─ utils/                               units (cm/m/ml/m²/DZD), fiscal (TVA/timbre), ULID
+└─ types/index.ts                       Design / PlacedObject / Tenant / Totals
+```
