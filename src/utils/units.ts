@@ -37,19 +37,32 @@ export function ceilTo(value: number, quantum = 1): number {
   return Math.ceil(value / quantum) * quantum
 }
 
-/** Algerian DZD formatter — no decimals, thin space group separator. */
+/** Algerian DZD formatter — no decimals, ASCII spaces for jsPDF compat. */
 const dzd = new Intl.NumberFormat('fr-FR', {
   style: 'decimal',
   maximumFractionDigits: 0
 })
 
+/**
+ * Intl's "fr-FR" formatter emits U+202F (narrow no-break space) as the
+ * thousands separator. The default Helvetica font shipped with jsPDF has
+ * no glyph for it and renders a "/", which looks like a typo on the
+ * client PDF. Normalize narrow + regular no-break spaces to ASCII space
+ * for both the DOM and the PDFs.
+ */
+function normalizeSpaces(s: string): string {
+  return s.replace(/[  ]/g, ' ')
+}
+
 export function formatDZD(value: number): string {
-  return `${dzd.format(Math.round(value))} DA`
+  return `${normalizeSpaces(dzd.format(Math.round(value)))} DA`
 }
 
 export function formatNumber(value: number, digits = 2): string {
-  return new Intl.NumberFormat('fr-FR', {
-    maximumFractionDigits: digits,
-    minimumFractionDigits: 0
-  }).format(value)
+  return normalizeSpaces(
+    new Intl.NumberFormat('fr-FR', {
+      maximumFractionDigits: digits,
+      minimumFractionDigits: 0
+    }).format(value)
+  )
 }

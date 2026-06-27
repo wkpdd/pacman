@@ -36,11 +36,21 @@ src/
 
 ## Run it
 
+### Locally (Node 22)
 ```bash
 npm install
 npm run dev      # http://localhost:5173
 npm run build    # production bundle in dist/
 npm run preview
+```
+
+### Docker
+```bash
+# Production bundle on http://localhost:8080 (nginx + PWA-friendly cache headers)
+docker compose up --build web
+
+# Or the dev server with hot reload on http://localhost:5173
+docker compose --profile dev up dev
 ```
 
 `npm run typecheck` runs `tsc --noEmit` in strict mode.

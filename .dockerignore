@@ -1,0 +1,11 @@
+.git
+.github
+node_modules
+dist
+dist-ssr
+scratch
+.vite
+*.tsbuildinfo
+.DS_Store
+.idea
+.vscode

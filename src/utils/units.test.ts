@@ -3,6 +3,7 @@ import {
   ceilTo,
   cmToM,
   formatDZD,
+  formatNumber,
   mToCm,
   polylineLengthM,
   rectAreaM2,
@@ -46,9 +47,22 @@ describe('units', () => {
   })
 
   it('formatDZD has no decimals and DA suffix', () => {
-    // Intl uses U+202F (narrow no-break space) as the group separator
-    expect(formatDZD(12345)).toMatch(/12[\s ]345\s*DA/)
-    expect(formatDZD(0)).toMatch(/^0\s*DA$/)
-    expect(formatDZD(1234.7)).toMatch(/1[\s ]235\s*DA/) // rounds, no decimals
+    expect(formatDZD(12345)).toBe('12 345 DA')
+    expect(formatDZD(0)).toBe('0 DA')
+    expect(formatDZD(1234.7)).toBe('1 235 DA') // rounds, no decimals
+  })
+
+  it('formatDZD uses ASCII space — jsPDF Helvetica has no glyph for U+202F', () => {
+    const s = formatDZD(148_266)
+    // Regression: Intl fr-FR emits U+202F (narrow nbsp) and U+00A0 nbsp;
+    // both render as "/" in jsPDF and look like a typo on the client PDF.
+    expect(s).not.toMatch(/[  ]/)
+    expect(s).toBe('148 266 DA')
+  })
+
+  it('formatNumber also avoids narrow no-break spaces', () => {
+    const s = formatNumber(1234567.89, 2)
+    expect(s).not.toMatch(/[  ]/)
+    expect(s).toBe('1 234 567,89')
   })
 })
