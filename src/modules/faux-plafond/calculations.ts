@@ -124,7 +124,7 @@ export function calculate(design: Design): CalcResult {
   for (const o of objects) {
     const mod = findModule(o.moduleId)
     if (!mod) continue
-    const decoEntry = decorativeFor(o, mod)
+    const decoEntry = decorativeFor(o, mod, room)
     if (decoEntry) decorative.push(decoEntry)
     if (o.kind === 'spotlight') spotCount += 1
     if (o.kind === 'spotlight-grid') {
@@ -199,16 +199,26 @@ function line(
 
 function decorativeFor(
   o: PlacedObject,
-  mod: ReturnType<typeof findModule> & object
+  mod: ReturnType<typeof findModule> & object,
+  room: { width: number; length: number }
 ): DecorativeLine | undefined {
   if (!mod) return undefined
   let qty = 0
   let unit = mod.unit as string
   switch (o.kind) {
     case 'corniche': {
-      // corniche follows the sides flagged on this object — fallback = the
-      // segment defined by (width); typical UX is "drag along edge".
-      qty = cmToM(o.width)
+      // Perimeter mode (default): follow the room edges flagged in sides.
+      // Stick mode: a single segment defined by `width`.
+      if (o.data?.perimeter !== false) {
+        const sides = o.data?.sides ?? ['top', 'right', 'bottom', 'left']
+        let len = 0
+        for (const s of sides) {
+          len += s === 'top' || s === 'bottom' ? cmToM(room.width) : cmToM(room.length)
+        }
+        qty = len
+      } else {
+        qty = cmToM(o.width)
+      }
       unit = 'ml'
       break
     }

@@ -6,12 +6,13 @@ import type { Lang } from '@/types'
 
 interface Props {
   onOpenSettings: () => void
+  onOpenDesigns: () => void
   onExportClientPdf: () => void
   onExportWorkerPdf: () => void
   saveStatus: 'idle' | 'saving' | 'saved'
 }
 
-export function Toolbar({ onOpenSettings, onExportClientPdf, onExportWorkerPdf, saveStatus }: Props): React.JSX.Element {
+export function Toolbar({ onOpenSettings, onOpenDesigns, onExportClientPdf, onExportWorkerPdf, saveStatus }: Props): React.JSX.Element {
   const { t } = useTranslation()
   const undo = useCanvasStore((s) => s.undo)
   const redo = useCanvasStore((s) => s.redo)
@@ -34,6 +35,7 @@ export function Toolbar({ onOpenSettings, onExportClientPdf, onExportWorkerPdf, 
         <button className="btn-primary" onClick={newDesign} title={t('app.new')}>
           ＋
         </button>
+        <button onClick={onOpenDesigns} title={t('app.open')}>📂</button>
         <input
           className="design-name"
           value={designName}

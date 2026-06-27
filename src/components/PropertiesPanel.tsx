@@ -70,6 +70,39 @@ export function PropertiesPanel(): React.JSX.Element {
               onChange={(v) => patchData(obj.id, { drop: v })}
             />
           )}
+          {obj.kind === 'corniche' && (
+            <div className="corniche-controls">
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={obj.data?.perimeter !== false}
+                  onChange={(e) => patchData(obj.id, { perimeter: e.target.checked })}
+                />
+                <span>Suivre le périmètre</span>
+              </label>
+              {obj.data?.perimeter !== false && (
+                <div className="side-toggles" aria-label="Côtés">
+                  {(['top', 'right', 'bottom', 'left'] as const).map((side) => {
+                    const active = (obj.data?.sides ?? ['top', 'right', 'bottom', 'left']).includes(side)
+                    return (
+                      <button
+                        key={side}
+                        className={active ? `side side-${side} on` : `side side-${side}`}
+                        onClick={() => {
+                          const cur = obj.data?.sides ?? ['top', 'right', 'bottom', 'left']
+                          const next = active ? cur.filter((s) => s !== side) : [...cur, side]
+                          patchData(obj.id, { sides: next })
+                        }}
+                        title={side}
+                      >
+                        {side === 'top' ? '▔' : side === 'bottom' ? '▁' : side === 'left' ? '▏' : '▕'}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="prop-actions">
             <button onClick={() => duplicateObject(obj.id)}>⧉ {t('app.duplicate')}</button>

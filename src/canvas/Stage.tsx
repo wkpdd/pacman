@@ -26,36 +26,56 @@ export function CanvasStage(): React.JSX.Element {
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [guides, setGuides] = useState<Array<{ kind: 'v' | 'h'; pos: number }>>([])
   const [showGrid, setShowGrid] = useState(true)
+  const [showDims, setShowDims] = useState(true)
 
-  // Expose the stage so the PDF exporter can grab it without a context.
+  // Expose the stage + view-mode setters so the PDF exporter can swap
+  // the canvas between "clean client render" and "dimensioned plan".
   useEffect(() => {
-    (window as unknown as { __decorStage?: Konva.Stage | null }).__decorStage = stageRef.current
+    const w = window as unknown as {
+      __decorStage?: Konva.Stage | null
+      __decorViewMode?: (m: 'client' | 'plan') => void
+    }
+    w.__decorStage = stageRef.current
+    w.__decorViewMode = (m) => {
+      setShowDims(m === 'plan')
+      setShowGrid(m === 'plan')
+    }
     return () => {
-      (window as unknown as { __decorStage?: Konva.Stage | null }).__decorStage = null
+      w.__decorStage = null
+      w.__decorViewMode = undefined
     }
   }, [])
 
-  // Fit on first measure / on room change if user hasn't manually zoomed
-  const fittedRef = useRef(false)
+  // Refit when the viewport or room dimensions change (room edits should
+  // never leave the design half off-screen).
+  const lastRoomRef = useRef({ w: room.width, l: room.length })
   useEffect(() => {
     if (vw === 0 || vh === 0) return
-    const s = fitScale(room.width, room.length, vw, vh)
-    if (!fittedRef.current) {
+    const roomChanged =
+      lastRoomRef.current.w !== room.width || lastRoomRef.current.l !== room.length
+    const firstRun = scale === 1 && offset.x === 0 && offset.y === 0
+    if (firstRun || roomChanged) {
+      const s = fitScale(room.width, room.length, vw, vh)
       setScale(s)
       setOffset({
         x: (vw - room.width * s) / 2,
         y: (vh - room.length * s) / 2
       })
-      fittedRef.current = true
+      lastRoomRef.current = { w: room.width, l: room.length }
     }
+    // intentionally narrow deps: don't refit on every offset/scale tweak the user makes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vw, vh, room.width, room.length])
 
-  // Attach transformer to selected node
+  // Attach transformer to selected node — but LED polylines and corniche
+  // in perimeter mode aren't resized via handles (their geometry is their data).
   useEffect(() => {
     const tr = transformerRef.current
     const stage = stageRef.current
     if (!tr || !stage) return
-    if (!selectionId) {
+    const sel = objects.find((o) => o.id === selectionId)
+    const usesTransformer = sel && sel.kind !== 'led-strip' && !(sel.kind === 'corniche' && sel.data?.perimeter !== false)
+    if (!selectionId || !usesTransformer) {
       tr.nodes([])
       tr.getLayer()?.batchDraw()
       return
@@ -179,7 +199,6 @@ export function CanvasStage(): React.JSX.Element {
         <Layer listening={false}>
           <Rect x={0} y={0} width={room.width} height={room.length} fill="#fef3c7" stroke="#0f172a" strokeWidth={2 / scale} />
           {showGrid && <GridLines room={room} step={GRID_STEP_CM} scale={scale} />}
-          <RoomLabels room={room} scale={scale} />
         </Layer>
 
         {/* ---- Object layer ---- */}
@@ -209,6 +228,17 @@ export function CanvasStage(): React.JSX.Element {
           />
         </Layer>
 
+        {/* ---- Dimension annotations ---- */}
+        {showDims && (
+          <Layer listening={false}>
+            <DimensionsOverlay
+              room={room}
+              scale={scale}
+              selected={objects.find((o) => o.id === selectionId) ?? null}
+            />
+          </Layer>
+        )}
+
         {/* ---- Guides layer ---- */}
         <Layer listening={false}>
           {guides.map((g, i) =>
@@ -237,7 +267,8 @@ export function CanvasStage(): React.JSX.Element {
         <button onClick={fitAll} title="Adapter">⤢</button>
         <button onClick={() => setScale((s) => Math.min(8, s * 1.2))}>＋</button>
         <button onClick={() => setScale((s) => Math.max(0.05, s / 1.2))}>−</button>
-        <button onClick={() => setShowGrid((g) => !g)} className={showGrid ? 'on' : ''}>#</button>
+        <button onClick={() => setShowGrid((g) => !g)} className={showGrid ? 'on' : ''} title="Grille">#</button>
+        <button onClick={() => setShowDims((d) => !d)} className={showDims ? 'on' : ''} title="Cotes">⊟</button>
       </div>
     </div>
   )
@@ -268,27 +299,78 @@ function GridLines({ room, step, scale }: { room: { width: number; length: numbe
   return <>{lines}</>
 }
 
-function RoomLabels({ room, scale }: { room: { width: number; length: number }; scale: number }) {
-  const fs = Math.max(12, 14 / scale)
-  return (
-    <>
+function DimensionsOverlay({
+  room,
+  scale,
+  selected
+}: {
+  room: { width: number; length: number; height: number }
+  scale: number
+  selected: PlacedObject | null
+}) {
+  const fs = Math.max(11, 13 / scale)
+  const off = 18 / scale
+  const tick = 8 / scale
+  const stroke = 1 / scale
+  const dims: React.JSX.Element[] = []
+
+  // Room width arrow (above room)
+  dims.push(
+    <Line key="rw" points={[0, -off, room.width, -off]} stroke="#0f172a" strokeWidth={stroke} />,
+    <Line key="rwl" points={[0, -off - tick, 0, -off + tick]} stroke="#0f172a" strokeWidth={stroke} />,
+    <Line key="rwr" points={[room.width, -off - tick, room.width, -off + tick]} stroke="#0f172a" strokeWidth={stroke} />,
+    <Text
+      key="rwt"
+      x={room.width / 2 - 30}
+      y={-off - fs * 1.4}
+      text={`${(room.width / 100).toFixed(2)} m`}
+      fontSize={fs}
+      fill="#0f172a"
+    />
+  )
+  // Room length arrow (left of room)
+  dims.push(
+    <Line key="rl" points={[-off, 0, -off, room.length]} stroke="#0f172a" strokeWidth={stroke} />,
+    <Line key="rlt" points={[-off - tick, 0, -off + tick, 0]} stroke="#0f172a" strokeWidth={stroke} />,
+    <Line key="rlb" points={[-off - tick, room.length, -off + tick, room.length]} stroke="#0f172a" strokeWidth={stroke} />,
+    <Text
+      key="rlt2"
+      x={-off - fs * 4}
+      y={room.length / 2}
+      text={`${(room.length / 100).toFixed(2)} m`}
+      fontSize={fs}
+      fill="#0f172a"
+      rotation={-90}
+    />
+  )
+
+  if (selected) {
+    const o = selected
+    const so = 8 / scale
+    dims.push(
+      <Line key="sw" points={[o.x, o.y - so, o.x + o.width, o.y - so]} stroke="#ef4444" strokeWidth={stroke} />,
       <Text
-        text={`${(room.width / 100).toFixed(2)} m`}
-        x={room.width / 2 - 30}
-        y={-fs * 1.6}
+        key="swt"
+        x={o.x + o.width / 2 - 20}
+        y={o.y - so - fs * 1.4}
+        text={`${(o.width / 100).toFixed(2)} m`}
         fontSize={fs}
-        fill="#0f172a"
-      />
+        fill="#ef4444"
+      />,
+      <Line key="sh" points={[o.x - so, o.y, o.x - so, o.y + o.height]} stroke="#ef4444" strokeWidth={stroke} />,
       <Text
-        text={`${(room.length / 100).toFixed(2)} m`}
-        x={-fs * 4}
-        y={room.length / 2}
+        key="sht"
+        x={o.x - so - fs * 3.4}
+        y={o.y + o.height / 2}
+        text={`${(o.height / 100).toFixed(2)} m`}
         fontSize={fs}
-        fill="#0f172a"
+        fill="#ef4444"
         rotation={-90}
       />
-    </>
-  )
+    )
+  }
+
+  return <>{dims}</>
 }
 
 interface ObjectProps {
@@ -392,14 +474,63 @@ function ObjectShape({
     )
   }
 
-  // LED strip (polyline)
+  // LED strip (polyline) — drag endpoints, double-tap a segment to add a waypoint
   if (obj.kind === 'led-strip') {
     const pts = obj.data?.points ?? [{ x: 0, y: 0 }, { x: obj.width, y: 0 }]
     const flat = pts.flatMap((p) => [p.x, p.y])
     const ml = polylineLengthM(pts).toFixed(2)
+    const moveHandle = (i: number, nx: number, ny: number) => {
+      const next = pts.map((p, k) => (k === i ? { x: nx, y: ny } : p))
+      onChange({ data: { ...obj.data, points: next } })
+    }
+    const addWaypoint = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+      const stage = e.target.getStage()
+      if (!stage) return
+      const pos = stage.getPointerPosition()
+      if (!pos) return
+      const localX = (pos.x - stage.x()) / stage.scaleX() - obj.x
+      const localY = (pos.y - stage.y()) / stage.scaleY() - obj.y
+      // Insert at end nearest to click
+      let bestIdx = pts.length
+      let bestD = Infinity
+      for (let i = 1; i < pts.length; i++) {
+        const mx = (pts[i - 1].x + pts[i].x) / 2
+        const my = (pts[i - 1].y + pts[i].y) / 2
+        const d = Math.hypot(localX - mx, localY - my)
+        if (d < bestD) { bestD = d; bestIdx = i }
+      }
+      const next = [...pts.slice(0, bestIdx), { x: localX, y: localY }, ...pts.slice(bestIdx)]
+      onChange({ data: { ...obj.data, points: next } })
+    }
     return (
-      <Group {...common}>
+      <Group {...common} onDblClick={addWaypoint} onDblTap={addWaypoint}>
         <Line points={flat} stroke="#f59e0b" strokeWidth={Math.max(3, 6 / scale)} lineCap="round" lineJoin="round" />
+        {selected && pts.map((p, i) => (
+          <Circle
+            key={i}
+            x={p.x}
+            y={p.y}
+            radius={Math.max(8, 12 / scale)}
+            fill="#fff"
+            stroke="#0f172a"
+            strokeWidth={1.5 / scale}
+            draggable
+            onDragMove={(e) => moveHandle(i, e.target.x(), e.target.y())}
+            onDragEnd={(e) => moveHandle(i, e.target.x(), e.target.y())}
+            onDblClick={(e) => {
+              e.cancelBubble = true
+              if (pts.length <= 2) return
+              const next = pts.filter((_, k) => k !== i)
+              onChange({ data: { ...obj.data, points: next } })
+            }}
+            onDblTap={(e) => {
+              e.cancelBubble = true
+              if (pts.length <= 2) return
+              const next = pts.filter((_, k) => k !== i)
+              onChange({ data: { ...obj.data, points: next } })
+            }}
+          />
+        ))}
         {selected && <Text x={pts[0].x} y={pts[0].y - 20} text={`${ml} ml`} fontSize={14 / scale} fill="#0f172a" />}
       </Group>
     )
@@ -424,8 +555,27 @@ function ObjectShape({
     )
   }
 
-  // Corniche — drawn as a perimeter outline of the selected sides
+  // Corniche — perimeter mode draws ribbons along the room's flagged sides
   if (obj.kind === 'corniche') {
+    if (obj.data?.perimeter !== false) {
+      const sides = obj.data?.sides ?? ['top', 'right', 'bottom', 'left']
+      const t = Math.max(6, obj.height) // ribbon thickness in world cm
+      const rs: React.JSX.Element[] = []
+      if (sides.includes('top')) rs.push(<Rect key="t" x={0} y={0} width={room.width} height={t} fill="#cbd5e1" stroke="#0f172a" strokeWidth={1 / scale} />)
+      if (sides.includes('bottom')) rs.push(<Rect key="b" x={0} y={room.length - t} width={room.width} height={t} fill="#cbd5e1" stroke="#0f172a" strokeWidth={1 / scale} />)
+      if (sides.includes('left')) rs.push(<Rect key="l" x={0} y={0} width={t} height={room.length} fill="#cbd5e1" stroke="#0f172a" strokeWidth={1 / scale} />)
+      if (sides.includes('right')) rs.push(<Rect key="r" x={room.width - t} y={0} width={t} height={room.length} fill="#cbd5e1" stroke="#0f172a" strokeWidth={1 / scale} />)
+      // Render in stage coordinates (not under the moving group) so dragging
+      // wouldn't offset them. Use an absolute Group anchored at 0,0.
+      return (
+        <Group id={`obj-${obj.id}`} onClick={onSelect} onTap={onSelect}>
+          {rs}
+          {selected && (
+            <Rect x={0} y={0} width={room.width} height={room.length} listening={false} stroke="#f59e0b" strokeWidth={1.5 / scale} dash={[8 / scale, 4 / scale]} />
+          )}
+        </Group>
+      )
+    }
     return (
       <Group {...common}>
         <Rect width={obj.width} height={obj.height} fill="#cbd5e1" stroke="#0f172a" strokeWidth={1 / scale} />

@@ -3,6 +3,7 @@ import { produce } from 'immer'
 import type { Design, PlacedObject, Room } from '@/types'
 import { newId } from '@/utils/id'
 import { findModule } from '@/modules/faux-plafond/library'
+import { sampleSalon } from '@/modules/faux-plafond/sample'
 
 interface Snapshot {
   room: Room
@@ -34,6 +35,7 @@ interface CanvasState {
   select: (id: string | null) => void
   loadDesign: (d: Design) => void
   newDesign: () => void
+  loadSample: () => void
   setName: (name: string) => void
 
   // history
@@ -99,7 +101,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                 : mod.kind === 'retombee'
                   ? { drop: 25 }
                   : mod.kind === 'corniche'
-                    ? { sides: ['top', 'right', 'bottom', 'left'] }
+                    ? { perimeter: true, sides: ['top', 'right', 'bottom', 'left'] }
                     : undefined
         }
         s.objects.push(obj)
@@ -185,6 +187,20 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       history: [{ room, objects: [] }],
       historyIndex: 0,
       isDirty: false
+    })
+  },
+
+  loadSample: () => {
+    const { room, objects } = sampleSalon()
+    set({
+      designId: newId(),
+      designName: 'Salon — exemple',
+      room,
+      objects,
+      selectionId: null,
+      history: [{ room, objects }],
+      historyIndex: 0,
+      isDirty: true
     })
   },
 
