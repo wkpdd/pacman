@@ -52,7 +52,24 @@ export function SettingsModal({ onClose }: Props): React.JSX.Element | null {
                 ? t('tenant.expiresIn', { days })
                 : t('tenant.expired')}
             </strong>
+            <input
+              type="text"
+              placeholder="Clé de licence (ex: 2025-PRO-A1B2C3)"
+              value={draft.licenseKey ?? ''}
+              onChange={(e) => setDraft({ ...draft, licenseKey: e.target.value })}
+            />
+            <small className="muted">
+              Saisie offline. La clé sera vérifiée à la prochaine synchronisation.
+            </small>
           </div>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={!!draft.highContrast}
+              onChange={(e) => setDraft({ ...draft, highContrast: e.target.checked })}
+            />
+            <span>Mode chantier (haut contraste, lecture au soleil)</span>
+          </label>
         </div>
         <footer className="modal-footer">
           <button className="btn-primary" onClick={async () => { await update(draft); onClose() }}>

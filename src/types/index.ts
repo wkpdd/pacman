@@ -105,5 +105,8 @@ export interface Tenant {
   currency: 'DZD'
   /** licence expiry epoch ms — gating that degrades offline */
   licenseExpiry?: number
+  licenseKey?: string
   tier: 'free' | 'solo' | 'pro' | 'team'
+  /** outdoor / direct-sunlight readability mode */
+  highContrast?: boolean
 }

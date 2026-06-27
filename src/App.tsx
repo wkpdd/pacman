@@ -8,6 +8,8 @@ import { CostPanel, useCalc } from '@/components/CostPanel'
 import { MobileBottomSheet } from '@/components/MobileBottomSheet'
 import { SettingsModal } from '@/components/SettingsModal'
 import { DesignsModal } from '@/components/DesignsModal'
+import { QuickCalculator } from '@/components/QuickCalculator'
+import { ShareToast } from '@/components/ShareToast'
 import { useTenantStore } from '@/store/tenantStore'
 import { useCanvasStore } from '@/store/canvasStore'
 import { applyLang } from '@/i18n'
@@ -22,6 +24,10 @@ export default function App(): React.JSX.Element {
   const loadTenant = useTenantStore((s) => s.load)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [designsOpen, setDesignsOpen] = useState(false)
+  const [calcOpen, setCalcOpen] = useState(false)
+  const [toastOpen, setToastOpen] = useState(false)
+  const setRoom = useCanvasStore((s) => s.setRoom)
+  const newDesign = useCanvasStore((s) => s.newDesign)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [online, setOnline] = useState(navigator.onLine)
   const { design, result, options, setOptions, client, setClient } = useCalc()
@@ -29,6 +35,9 @@ export default function App(): React.JSX.Element {
 
   useEffect(() => { void loadTenant() }, [loadTenant])
   useEffect(() => { if (tenant) applyLang(tenant.lang) }, [tenant?.lang])
+  useEffect(() => {
+    document.documentElement.classList.toggle('high-contrast', !!tenant?.highContrast)
+  }, [tenant?.highContrast])
   useEffect(() => {
     const on = () => setOnline(true)
     const off = () => setOnline(false)
@@ -64,6 +73,7 @@ export default function App(): React.JSX.Element {
     await new Promise<void>((r) => requestAnimationFrame(() => r()))
     const dataUrl = await captureStage('client')
     exportClientProposal(tenant, design, result, dataUrl)
+    setToastOpen(true)
   }
   const onExportWorker = async () => {
     if (!tenant) return
@@ -78,6 +88,7 @@ export default function App(): React.JSX.Element {
       <Toolbar
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenDesigns={() => setDesignsOpen(true)}
+        onOpenCalculator={() => setCalcOpen(true)}
         onExportClientPdf={onExportClient}
         onExportWorkerPdf={onExportWorker}
         saveStatus={saveStatus}
@@ -132,6 +143,21 @@ export default function App(): React.JSX.Element {
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
       {designsOpen && <DesignsModal onClose={() => setDesignsOpen(false)} />}
+      {calcOpen && (
+        <QuickCalculator
+          onClose={() => setCalcOpen(false)}
+          onPromoteToCanvas={(r) => { newDesign(); setRoom(r) }}
+        />
+      )}
+      {toastOpen && tenant && (
+        <ShareToast
+          tenant={tenant}
+          client={client}
+          totals={result.totals}
+          designName={design.name}
+          onClose={() => setToastOpen(false)}
+        />
+      )}
     </div>
   )
 }

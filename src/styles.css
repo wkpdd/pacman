@@ -349,6 +349,61 @@ input:focus, select:focus, textarea:focus {
 }
 .design-del:hover { color: var(--danger); border-color: var(--danger); }
 
+/* ============ QUICK CALCULATOR ============ */
+.calc-modal { width: min(880px, 100% - 24px); }
+.calc-body { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.calc-form { display: grid; gap: 10px; min-width: 0; }
+.calc-form h3 { margin: 8px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); }
+.calc-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+}
+.calc-total { font-size: 28px; font-weight: 800; color: var(--ink); }
+.calc-summary .lines { max-height: 220px; overflow: auto; margin-top: 8px; }
+@media (max-width: 720px) {
+  .calc-body { grid-template-columns: 1fr; }
+}
+
+/* ============ TOAST ============ */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 80px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--ink);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  z-index: 110;
+  max-width: calc(100% - 24px);
+}
+.toast-wa {
+  background: #25d366;
+  color: #0f172a;
+  padding: 10px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.toast-close {
+  width: 32px; height: 32px;
+  border-radius: 999px;
+  border: 1px solid #334155;
+  background: transparent;
+  color: white;
+  font-size: 14px;
+}
+
 /* ============ MOBILE BOTTOM SHEET ============ */
 .mobile-only { display: none; }
 .bottom-sheet {
@@ -427,11 +482,28 @@ html[dir="rtl"] .app-main { direction: rtl; }
 html[dir="rtl"] .toolbar { direction: rtl; }
 html[dir="rtl"] .canvas-wrap { direction: ltr; } /* canvas stays LTR */
 
-/* ============ OUTDOOR / HIGH-CONTRAST OPTION ============ */
-.high-contrast {
+/* ============ OUTDOOR / HIGH-CONTRAST MODE ============ */
+/* For job-site readability in direct sunlight: solid black on yellow,
+   thicker borders, no thin grey text. */
+html.high-contrast {
   --surface: #ffffff;
-  --surface-2: #ffffff;
+  --surface-2: #fde68a;
   --line: #000000;
   --ink: #000000;
   --ink-soft: #000000;
+  --tint: #fb8c00;
+  --tint-soft: #fff3cd;
 }
+html.high-contrast body { background: #fde68a; }
+html.high-contrast .toolbar { background: #000000; }
+html.high-contrast .toolbar button { background: #000; border-color: #fb8c00; }
+html.high-contrast .toolbar .btn-primary { background: #fb8c00; color: #000; }
+html.high-contrast input,
+html.high-contrast select,
+html.high-contrast textarea { border-width: 2px; }
+html.high-contrast button { border-width: 2px; font-weight: 700; }
+html.high-contrast .cost-header { background: #000; }
+html.high-contrast .cost-total { color: #fb8c00; }
+html.high-contrast .row, html.high-contrast .lines li,
+html.high-contrast .num-field > span, html.high-contrast .cost-area,
+html.high-contrast .design-meta { font-weight: 600; }

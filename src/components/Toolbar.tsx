@@ -7,12 +7,13 @@ import type { Lang } from '@/types'
 interface Props {
   onOpenSettings: () => void
   onOpenDesigns: () => void
+  onOpenCalculator: () => void
   onExportClientPdf: () => void
   onExportWorkerPdf: () => void
   saveStatus: 'idle' | 'saving' | 'saved'
 }
 
-export function Toolbar({ onOpenSettings, onOpenDesigns, onExportClientPdf, onExportWorkerPdf, saveStatus }: Props): React.JSX.Element {
+export function Toolbar({ onOpenSettings, onOpenDesigns, onOpenCalculator, onExportClientPdf, onExportWorkerPdf, saveStatus }: Props): React.JSX.Element {
   const { t } = useTranslation()
   const undo = useCanvasStore((s) => s.undo)
   const redo = useCanvasStore((s) => s.redo)
@@ -36,6 +37,7 @@ export function Toolbar({ onOpenSettings, onOpenDesigns, onExportClientPdf, onEx
           ＋
         </button>
         <button onClick={onOpenDesigns} title={t('app.open')}>📂</button>
+        <button onClick={onOpenCalculator} title="Calculateur rapide">🧮</button>
         <input
           className="design-name"
           value={designName}
