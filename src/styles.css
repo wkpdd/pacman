@@ -48,7 +48,7 @@ input:focus, select:focus, textarea:focus {
 }
 .app-main {
   display: grid;
-  grid-template-columns: 240px 1fr 260px 320px;
+  grid-template-columns: 260px 1fr 260px 320px;
   min-height: 0;
 }
 .canvas-wrap { position: relative; min-width: 0; min-height: 0; background: #fde68a55; }
@@ -174,17 +174,18 @@ input:focus, select:focus, textarea:focus {
 /* Library tray */
 .library-cats {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
-  padding: 4px 8px;
-  overflow-x: auto;
+  padding: 8px;
 }
 .library-cats .cat {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 8px 12px;
-  min-height: 40px;
+  padding: 6px 10px;
+  min-height: 36px;
+  font-size: 12px;
   white-space: nowrap;
 }
 .library-cats .cat.on { background: var(--ink); color: white; border-color: var(--ink); }

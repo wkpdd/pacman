@@ -1,0 +1,23 @@
+name: ci
+
+on:
+  push:
+    branches: [master, main, 'claude/**']
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: TypeScript strict check
+        run: npx tsc -b --noEmit
+      - name: Vitest
+        run: npm test
+      - name: Production build
+        run: npx vite build

@@ -44,6 +44,8 @@ npm run preview
 ```
 
 `npm run typecheck` runs `tsc --noEmit` in strict mode.
+`npm test` runs the Vitest suite (calc engine + fiscal + units).
+GitHub Actions runs typecheck + tests + production build on every push.
 
 ## Mobile-first, touch-first
 
