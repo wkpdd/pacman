@@ -478,40 +478,50 @@ function ObjectShape({
     onTouchMove: cancelLongPress
   } satisfies Konva.NodeConfig & { id: string }
 
-  // Spotlight (single)
+  // Spotlight (single) — warm halo + bezel + bright core
   if (obj.kind === 'spotlight') {
+    const cx = obj.width / 2
+    const cy = obj.height / 2
+    const r = obj.width / 2
     return (
       <Group {...common}>
-        <Circle x={obj.width / 2} y={obj.height / 2} radius={obj.width / 2} fill="#fffbeb" stroke="#0f172a" strokeWidth={1.2 / scale} />
-        <Circle x={obj.width / 2} y={obj.height / 2} radius={obj.width / 4} fill="#f59e0b" />
+        <Circle x={cx} y={cy} radius={r * 2.2} fill="#fbbf24" opacity={0.18} />
+        <Circle x={cx} y={cy} radius={r * 1.4} fill="#fde68a" opacity={0.35} />
+        <Circle x={cx} y={cy} radius={r} fill="#fffbeb" stroke="#a16207" strokeWidth={0.8 / scale} />
+        <Circle x={cx} y={cy} radius={r * 0.55} fill="#f59e0b" />
+        <Circle x={cx} y={cy} radius={r * 0.28} fill="#fff7ed" />
       </Group>
     )
   }
 
-  // Spotlight grid — auto-distribute spots
+  // Spotlight grid — auto-distribute spots, each with a warm halo
   if (obj.kind === 'spotlight-grid') {
     const rows = obj.data?.rows ?? 3
     const cols = obj.data?.cols ?? 3
-    const spots: React.JSX.Element[] = []
     const cellW = obj.width / cols
     const cellH = obj.height / rows
-    for (let r = 0; r < rows; r++)
-      for (let c = 0; c < cols; c++)
-        spots.push(
-          <Circle
-            key={`${r}-${c}`}
-            x={cellW * (c + 0.5)}
-            y={cellH * (r + 0.5)}
-            radius={Math.min(cellW, cellH) * 0.18}
-            fill="#f59e0b"
-            stroke="#0f172a"
-            strokeWidth={0.8 / scale}
-          />
+    const spotR = Math.min(cellW, cellH) * 0.18
+    const halos: React.JSX.Element[] = []
+    const bulbs: React.JSX.Element[] = []
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const x = cellW * (col + 0.5)
+        const y = cellH * (row + 0.5)
+        halos.push(
+          <Circle key={`h${row}-${col}`} x={x} y={y} radius={spotR * 2.2} fill="#fbbf24" opacity={0.14} />,
+          <Circle key={`m${row}-${col}`} x={x} y={y} radius={spotR * 1.4} fill="#fde68a" opacity={0.3} />
         )
+        bulbs.push(
+          <Circle key={`b${row}-${col}`} x={x} y={y} radius={spotR} fill="#fffbeb" stroke="#a16207" strokeWidth={0.6 / scale} />,
+          <Circle key={`c${row}-${col}`} x={x} y={y} radius={spotR * 0.55} fill="#f59e0b" />
+        )
+      }
+    }
     return (
       <Group {...common}>
-        <Rect width={obj.width} height={obj.height} fill={selected ? 'rgba(245,158,11,0.08)' : 'transparent'} stroke="#0f172a" strokeWidth={0.8 / scale} dash={[6 / scale, 4 / scale]} />
-        {spots}
+        <Rect width={obj.width} height={obj.height} fill={selected ? 'rgba(245,158,11,0.06)' : 'transparent'} stroke="#0f172a" strokeWidth={0.8 / scale} dash={[6 / scale, 4 / scale]} />
+        {halos}
+        {bulbs}
       </Group>
     )
   }
@@ -546,7 +556,11 @@ function ObjectShape({
     }
     return (
       <Group {...common} onDblClick={addWaypoint} onDblTap={addWaypoint}>
+        {/* Soft glow stack — three blurred strokes give the LED an aura */}
+        <Line points={flat} stroke="#fde68a" strokeWidth={Math.max(14, 22 / scale)} opacity={0.35} lineCap="round" lineJoin="round" />
+        <Line points={flat} stroke="#fbbf24" strokeWidth={Math.max(8, 12 / scale)} opacity={0.55} lineCap="round" lineJoin="round" />
         <Line points={flat} stroke="#f59e0b" strokeWidth={Math.max(3, 6 / scale)} lineCap="round" lineJoin="round" />
+        <Line points={flat} stroke="#fff7ed" strokeWidth={Math.max(1, 2 / scale)} opacity={0.9} lineCap="round" lineJoin="round" />
         {selected && pts.map((p, i) => (
           <Circle
             key={i}
@@ -599,19 +613,37 @@ function ObjectShape({
 
   // Corniche — perimeter mode draws ribbons along the room's flagged sides
   if (obj.kind === 'corniche') {
+    const hasLED = obj.moduleId.includes('led')
     if (obj.data?.perimeter !== false) {
       const sides = obj.data?.sides ?? ['top', 'right', 'bottom', 'left']
       const t = Math.max(6, obj.height) // ribbon thickness in world cm
-      const rs: React.JSX.Element[] = []
-      if (sides.includes('top')) rs.push(<Rect key="t" x={0} y={0} width={room.width} height={t} fill="#cbd5e1" stroke="#0f172a" strokeWidth={1 / scale} />)
-      if (sides.includes('bottom')) rs.push(<Rect key="b" x={0} y={room.length - t} width={room.width} height={t} fill="#cbd5e1" stroke="#0f172a" strokeWidth={1 / scale} />)
-      if (sides.includes('left')) rs.push(<Rect key="l" x={0} y={0} width={t} height={room.length} fill="#cbd5e1" stroke="#0f172a" strokeWidth={1 / scale} />)
-      if (sides.includes('right')) rs.push(<Rect key="r" x={room.width - t} y={0} width={t} height={room.length} fill="#cbd5e1" stroke="#0f172a" strokeWidth={1 / scale} />)
-      // Render in stage coordinates (not under the moving group) so dragging
-      // wouldn't offset them. Use an absolute Group anchored at 0,0.
+      const ribbon = (x: number, y: number, w: number, h: number, side: 'top' | 'right' | 'bottom' | 'left') => {
+        const parts: React.JSX.Element[] = []
+        // outer band — plaster body
+        parts.push(<Rect key={`${side}-b`} x={x} y={y} width={w} height={h} fill="#f1f5f9" stroke="#475569" strokeWidth={1 / scale} />)
+        // inner shadow line
+        parts.push(<Rect key={`${side}-s`} x={x + 1 / scale} y={y + 1 / scale} width={w - 2 / scale} height={h - 2 / scale} fill="none" stroke="#94a3b8" strokeWidth={0.4 / scale} />)
+        if (hasLED) {
+          // LED glow ribbon on the inner edge facing the room interior
+          const glowT = Math.max(2, h * 0.25)
+          let gx = x, gy = y, gw = w, gh = glowT
+          if (side === 'top') { gy = y + h - glowT }
+          else if (side === 'bottom') { gy = y }
+          else if (side === 'left') { gx = x + w - glowT; gw = glowT; gh = h }
+          else { gx = x; gw = glowT; gh = h }
+          parts.push(<Rect key={`${side}-glow1`} x={gx - 4 / scale} y={gy - 4 / scale} width={gw + 8 / scale} height={gh + 8 / scale} fill="#fbbf24" opacity={0.25} />)
+          parts.push(<Rect key={`${side}-glow2`} x={gx} y={gy} width={gw} height={gh} fill="#f59e0b" opacity={0.85} />)
+        }
+        return parts
+      }
+      const all: React.JSX.Element[] = []
+      if (sides.includes('top')) all.push(...ribbon(0, 0, room.width, t, 'top'))
+      if (sides.includes('bottom')) all.push(...ribbon(0, room.length - t, room.width, t, 'bottom'))
+      if (sides.includes('left')) all.push(...ribbon(0, 0, t, room.length, 'left'))
+      if (sides.includes('right')) all.push(...ribbon(room.width - t, 0, t, room.length, 'right'))
       return (
         <Group id={`obj-${obj.id}`} onClick={onSelect} onTap={onSelect}>
-          {rs}
+          {all}
           {selected && (
             <Rect x={0} y={0} width={room.width} height={room.length} listening={false} stroke="#f59e0b" strokeWidth={1.5 / scale} dash={[8 / scale, 4 / scale]} />
           )}
@@ -620,19 +652,37 @@ function ObjectShape({
     }
     return (
       <Group {...common}>
-        <Rect width={obj.width} height={obj.height} fill="#cbd5e1" stroke="#0f172a" strokeWidth={1 / scale} />
+        <Rect width={obj.width} height={obj.height} fill="#f1f5f9" stroke="#475569" strokeWidth={1 / scale} />
         <Rect x={2} y={2} width={obj.width - 4} height={obj.height - 4} stroke="#94a3b8" strokeWidth={0.5 / scale} />
+        {hasLED && <Rect x={2} y={obj.height * 0.7} width={obj.width - 4} height={Math.max(2, obj.height * 0.18)} fill="#f59e0b" opacity={0.85} />}
       </Group>
     )
   }
 
-  // Rosace
+  // Rosace — ornate plaster rosace with petals + concentric rings
   if (obj.kind === 'rosace') {
+    const cx = obj.width / 2
+    const cy = obj.height / 2
+    const r = obj.width / 2
+    const petals: React.JSX.Element[] = []
+    const petalCount = 12
+    for (let i = 0; i < petalCount; i++) {
+      const a = (i / petalCount) * Math.PI * 2
+      const px = cx + Math.cos(a) * r * 0.72
+      const py = cy + Math.sin(a) * r * 0.72
+      petals.push(
+        <Circle key={`p${i}`} x={px} y={py} radius={r * 0.16} fill="#fef3c7" stroke="#a16207" strokeWidth={0.6 / scale} />
+      )
+    }
     return (
       <Group {...common}>
-        <Circle x={obj.width / 2} y={obj.height / 2} radius={obj.width / 2} fill="#fef3c7" stroke="#0f172a" strokeWidth={1.2 / scale} />
-        <Circle x={obj.width / 2} y={obj.height / 2} radius={obj.width / 3.5} fill="none" stroke="#0f172a" strokeWidth={0.8 / scale} />
-        <Circle x={obj.width / 2} y={obj.height / 2} radius={obj.width / 8} fill="#0f172a" />
+        <Circle x={cx} y={cy} radius={r} fill="#fffbeb" stroke="#a16207" strokeWidth={1.2 / scale} />
+        <Circle x={cx} y={cy} radius={r * 0.92} fill="none" stroke="#a16207" strokeWidth={0.5 / scale} />
+        {petals}
+        <Circle x={cx} y={cy} radius={r * 0.42} fill="#fef3c7" stroke="#a16207" strokeWidth={0.7 / scale} />
+        <Circle x={cx} y={cy} radius={r * 0.32} fill="none" stroke="#a16207" strokeWidth={0.4 / scale} />
+        <Circle x={cx} y={cy} radius={r * 0.16} fill="#a16207" />
+        <Circle x={cx} y={cy} radius={r * 0.06} fill="#fffbeb" />
       </Group>
     )
   }
