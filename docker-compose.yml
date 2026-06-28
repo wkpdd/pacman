@@ -1,11 +1,11 @@
 # Décor Studio — local Docker setup.
 #
-# Two services:
-#   web    — production build served by nginx on http://localhost:8080
-#   dev    — hot-reloading Vite dev server on http://localhost:5173
+# Default:               docker compose up --build   → web on :8080
+# Explicit prod build:   docker compose up --build web
+# Hot-reload dev server: docker compose --profile dev up dev   → :5173
 #
-# Pick one or the other. The dev service mounts the source tree so edits
-# round-trip live; the web service is what you'd actually ship.
+# The dev profile mounts the source tree so edits round-trip live.
+# The web service is the production build that an end user would deploy.
 
 services:
   web:
@@ -13,10 +13,10 @@ services:
       context: .
       target: runtime
     image: decor-studio:latest
+    container_name: decor-studio
     ports:
       - "8080:80"
     restart: unless-stopped
-    profiles: ["web", "default"]
 
   dev:
     image: node:22-alpine
