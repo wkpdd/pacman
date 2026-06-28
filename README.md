@@ -36,12 +36,21 @@ src/
 
 ## Run it
 
-### Locally (Node 22)
+### Zero-toolchain: unzip + any static server
+If you just want to see it, you only need a static HTTP server.
 ```bash
-npm install
-npm run dev      # http://localhost:5173
-npm run build    # production bundle in dist/
-npm run preview
+unzip decor-studio-dist.zip -d decor-studio
+cd decor-studio
+python3 -m http.server 8080      # or: npx serve -l 8080 .
+# → http://localhost:8080
+```
+
+### `./run.sh` (picks docker → node → python)
+```bash
+./run.sh           # auto-detect best runtime
+./run.sh docker
+./run.sh node
+./run.sh static
 ```
 
 ### Docker
@@ -51,6 +60,14 @@ docker compose up --build web
 
 # Or the dev server with hot reload on http://localhost:5173
 docker compose --profile dev up dev
+```
+
+### Locally (Node 22)
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # production bundle in dist/
+npm run preview
 ```
 
 `npm run typecheck` runs `tsc --noEmit` in strict mode.
