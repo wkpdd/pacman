@@ -50,6 +50,8 @@ export interface PlacedObject {
     cols?: number
     /** for led-strip — polyline points in cm relative to (x,y) */
     points?: Point[]
+    /** for led-strip — render as a smooth curve through the points */
+    curved?: boolean
     /** for corniche — perimeter mode: follows the room edges flagged in `sides` */
     perimeter?: boolean
     sides?: Array<'top' | 'right' | 'bottom' | 'left'>

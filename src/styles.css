@@ -51,8 +51,24 @@ input:focus, select:focus, textarea:focus {
   grid-template-columns: 260px 1fr 260px 320px;
   min-height: 0;
 }
-.canvas-wrap { position: relative; min-width: 0; min-height: 0; background: #fde68a55; }
-.canvas-host { position: absolute; inset: 0; }
+.canvas-wrap { position: relative; min-width: 0; min-height: 0; background: #fde68a55; perspective: 1800px; perspective-origin: 50% 30%; }
+.canvas-host { position: absolute; inset: 0; transition: transform 400ms ease; transform-origin: 50% 50%; }
+.canvas-host.iso3d {
+  transform: rotateX(58deg) rotateZ(-32deg) translateZ(0);
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
+}
+.canvas-host.iso3d::before {
+  /* "walls" — four extruded panels giving depth context */
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(15,23,42,0.18), rgba(15,23,42,0.04)) bottom / 100% 12% no-repeat,
+    linear-gradient(to top,    rgba(15,23,42,0.18), rgba(15,23,42,0.04)) top    / 100% 12% no-repeat,
+    linear-gradient(to right,  rgba(15,23,42,0.18), rgba(15,23,42,0.04)) right  / 12% 100% no-repeat,
+    linear-gradient(to left,   rgba(15,23,42,0.18), rgba(15,23,42,0.04)) left   / 12% 100% no-repeat;
+}
 .net {
   position: absolute;
   top: 8px;

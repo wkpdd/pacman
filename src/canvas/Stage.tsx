@@ -34,6 +34,7 @@ export function CanvasStage({ onContextRequest }: StageProps): React.JSX.Element
   const [showDims, setShowDims] = useState(true)
   const [showPlaqueLayout, setShowPlaqueLayout] = useState(false)
   const [showSupportGrid, setShowSupportGrid] = useState(false)
+  const [iso3d, setIso3d] = useState(false)
 
   // Expose the stage + view-mode setters so the PDF exporter can swap
   // the canvas between "clean client render" and "dimensioned plan".
@@ -186,7 +187,7 @@ export function CanvasStage({ onContextRequest }: StageProps): React.JSX.Element
   }, [vw, vh, room.width, room.length])
 
   return (
-    <div ref={containerRef} className="canvas-host">
+    <div ref={containerRef} className={iso3d ? 'canvas-host iso3d' : 'canvas-host'}>
       <Stage
         ref={stageRef}
         width={vw}
@@ -286,6 +287,7 @@ export function CanvasStage({ onContextRequest }: StageProps): React.JSX.Element
         <button onClick={() => setShowDims((d) => !d)} className={showDims ? 'on' : ''} title="Cotes">⊟</button>
         <button onClick={() => setShowPlaqueLayout((p) => !p)} className={showPlaqueLayout ? 'on' : ''} title="Layout BA13">▦</button>
         <button onClick={() => setShowSupportGrid((g) => !g)} className={showSupportGrid ? 'on' : ''} title="Fourrures + suspentes">⫼</button>
+        <button onClick={() => setIso3d((i) => !i)} className={iso3d ? 'on' : ''} title="Vue 3D (isométrique)">⬢</button>
       </div>
     </div>
   )
@@ -656,13 +658,14 @@ function ObjectShape({
       const next = [...pts.slice(0, bestIdx), { x: localX, y: localY }, ...pts.slice(bestIdx)]
       onChange({ data: { ...obj.data, points: next } })
     }
+    const tension = obj.data?.curved ? 0.5 : 0
     return (
       <Group {...common} onDblClick={addWaypoint} onDblTap={addWaypoint}>
         {/* Soft glow stack — three blurred strokes give the LED an aura */}
-        <Line points={flat} stroke="#fde68a" strokeWidth={Math.max(14, 22 / scale)} opacity={0.35} lineCap="round" lineJoin="round" />
-        <Line points={flat} stroke="#fbbf24" strokeWidth={Math.max(8, 12 / scale)} opacity={0.55} lineCap="round" lineJoin="round" />
-        <Line points={flat} stroke="#f59e0b" strokeWidth={Math.max(3, 6 / scale)} lineCap="round" lineJoin="round" />
-        <Line points={flat} stroke="#fff7ed" strokeWidth={Math.max(1, 2 / scale)} opacity={0.9} lineCap="round" lineJoin="round" />
+        <Line points={flat} tension={tension} stroke="#fde68a" strokeWidth={Math.max(14, 22 / scale)} opacity={0.35} lineCap="round" lineJoin="round" />
+        <Line points={flat} tension={tension} stroke="#fbbf24" strokeWidth={Math.max(8, 12 / scale)} opacity={0.55} lineCap="round" lineJoin="round" />
+        <Line points={flat} tension={tension} stroke="#f59e0b" strokeWidth={Math.max(3, 6 / scale)} lineCap="round" lineJoin="round" />
+        <Line points={flat} tension={tension} stroke="#fff7ed" strokeWidth={Math.max(1, 2 / scale)} opacity={0.9} lineCap="round" lineJoin="round" />
         {selected && pts.map((p, i) => (
           <Circle
             key={i}

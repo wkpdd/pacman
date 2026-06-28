@@ -63,6 +63,16 @@ export function PropertiesPanel(): React.JSX.Element {
               <NumField label="Colonnes" value={obj.data?.cols ?? 3} min={1} max={20} step={1} onChange={(v) => patchData(obj.id, { cols: v })} />
             </div>
           )}
+          {obj.kind === 'led-strip' && (
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={!!obj.data?.curved}
+                onChange={(e) => patchData(obj.id, { curved: e.target.checked })}
+              />
+              <span>Tracé courbe</span>
+            </label>
+          )}
           {obj.kind === 'retombee' && (
             <NumField
               label="Hauteur retombée"
