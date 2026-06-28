@@ -57,6 +57,86 @@ input:focus, select:focus, textarea:focus {
   transform: rotateX(58deg) rotateZ(-32deg) translateZ(0);
   box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
 }
+/* ============ STANDALONE VIEW WINDOWS ============ */
+.view-window {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+}
+.view-window-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--ink);
+  color: white;
+  box-shadow: var(--shadow);
+}
+.view-window-tag {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--tint);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 13px;
+}
+.view-window-name { flex: 1; }
+.view-window-total {
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--tint);
+}
+.view-window-main {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  min-height: 0;
+}
+.view-window-main > .canvas-wrap { background: #fde68a55; }
+.view-window-aside { background: var(--surface); border-left: 1px solid var(--line); overflow: auto; }
+@media (max-width: 720px) {
+  .view-window-main { grid-template-columns: 1fr; }
+  .view-window-aside { display: none; }
+}
+
+/* ============ VIEW PICKER MODAL ============ */
+.views-modal { width: min(560px, 100% - 24px); }
+.views-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+.view-card {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  justify-items: center;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  min-height: 120px;
+}
+.view-card:hover { background: var(--tint-soft); border-color: var(--tint); }
+.view-icon { font-size: 32px; }
+.view-label { font-weight: 700; }
+.view-audience { font-size: 12px; color: var(--ink-soft); }
+
+/* ============ 3D SCENE ============ */
+.scene3d-wrap {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  background: #e0e7ff;
+}
+.scene3d-mount {
+  position: relative;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+.scene3d-mount canvas { display: block; }
+
 .canvas-host.iso3d::before {
   /* "walls" — four extruded panels giving depth context */
   content: '';

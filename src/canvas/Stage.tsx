@@ -13,16 +13,21 @@ const SNAP_THRESHOLD_CM = 8 // generous on touch — forgiving hit areas
 
 interface StageProps {
   onContextRequest: (info: { objectId: string; screenX: number; screenY: number }) => void
+  /** optional view-mode locks: filter visible objects and force overlay state */
+  viewSpec?: import('@/views/viewMode').ViewSpec
 }
 
-export function CanvasStage({ onContextRequest }: StageProps): React.JSX.Element {
+export function CanvasStage({ onContextRequest, viewSpec }: StageProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const { width: vw, height: vh } = useContainerSize(containerRef)
   const stageRef = useRef<Konva.Stage>(null)
   const transformerRef = useRef<Konva.Transformer>(null)
 
   const room = useCanvasStore((s) => s.room)
-  const objects = useCanvasStore((s) => s.objects)
+  const allObjects = useCanvasStore((s) => s.objects)
+  const objects = viewSpec?.visibleKinds
+    ? allObjects.filter((o) => viewSpec.visibleKinds!.includes(o.kind))
+    : allObjects
   const selectionId = useCanvasStore((s) => s.selectionId)
   const select = useCanvasStore((s) => s.select)
   const updateObject = useCanvasStore((s) => s.updateObject)
@@ -30,11 +35,12 @@ export function CanvasStage({ onContextRequest }: StageProps): React.JSX.Element
   const [scale, setScale] = useState(1)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [guides, setGuides] = useState<Array<{ kind: 'v' | 'h'; pos: number }>>([])
-  const [showGrid, setShowGrid] = useState(true)
-  const [showDims, setShowDims] = useState(true)
-  const [showPlaqueLayout, setShowPlaqueLayout] = useState(false)
-  const [showSupportGrid, setShowSupportGrid] = useState(false)
+  const [showGrid, setShowGrid] = useState(viewSpec?.showGrid ?? true)
+  const [showDims, setShowDims] = useState(viewSpec?.showDimensions ?? true)
+  const [showPlaqueLayout, setShowPlaqueLayout] = useState(viewSpec?.showPlaqueLayout ?? false)
+  const [showSupportGrid, setShowSupportGrid] = useState(viewSpec?.showSupportGrid ?? false)
   const [iso3d, setIso3d] = useState(false)
+  const readOnly = viewSpec?.editable === false
 
   // Expose the stage + view-mode setters so the PDF exporter can swap
   // the canvas between "clean client render" and "dimensioned plan".
@@ -220,13 +226,15 @@ export function CanvasStage({ onContextRequest }: StageProps): React.JSX.Element
               key={o.id}
               obj={o}
               selected={o.id === selectionId}
-              onSelect={() => select(o.id)}
+              onSelect={() => !readOnly && select(o.id)}
               onChange={(patch) => updateObject(o.id, patch)}
               setGuides={setGuides}
               allObjects={objects}
               room={room}
               scale={scale}
+              readOnly={readOnly}
               onContext={(screenX, screenY) => {
+                if (readOnly) return
                 select(o.id)
                 onContextRequest({ objectId: o.id, screenX, screenY })
               }}
@@ -495,6 +503,7 @@ interface ObjectProps {
   allObjects: PlacedObject[]
   room: { width: number; length: number; height: number }
   onContext: (screenX: number, screenY: number) => void
+  readOnly?: boolean
 }
 
 function ObjectShape({
@@ -506,7 +515,8 @@ function ObjectShape({
   setGuides,
   allObjects,
   room,
-  onContext
+  onContext,
+  readOnly
 }: ObjectProps): React.JSX.Element {
   // Long-press → context menu (mobile). On desktop, native right-click works.
   const longPressTimer = useRef<number | null>(null)
@@ -565,7 +575,7 @@ function ObjectShape({
     x: obj.x,
     y: obj.y,
     rotation: obj.rotation,
-    draggable: !obj.locked,
+    draggable: !obj.locked && !readOnly,
     onDragMove,
     onDragEnd,
     onTransformEnd,

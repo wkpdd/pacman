@@ -13,6 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@types/three": "^0.185.0",
     "dexie": "^4.0.10",
     "i18next": "^23.15.2",
     "immer": "^10.1.1",
@@ -22,6 +23,7 @@
     "react-dom": "^19.0.0",
     "react-i18next": "^15.1.1",
     "react-konva": "^19.0.1",
+    "three": "^0.185.0",
     "ulid": "^2.3.0",
     "zustand": "^5.0.1"
   },

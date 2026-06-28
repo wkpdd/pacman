@@ -11,6 +11,7 @@ import { DesignsModal } from '@/components/DesignsModal'
 import { QuickCalculator } from '@/components/QuickCalculator'
 import { ShareToast } from '@/components/ShareToast'
 import { ContextMenu } from '@/components/ContextMenu'
+import { ViewMenu } from '@/views/ViewMenu'
 import { useTenantStore } from '@/store/tenantStore'
 import { useCanvasStore } from '@/store/canvasStore'
 import { applyLang } from '@/i18n'
@@ -18,14 +19,36 @@ import { saveDesign, nextInvoiceNumber } from '@/store/db'
 import { exportClientProposal } from '@/pdf/clientProposal'
 import { exportWorkerPlan } from '@/pdf/workerTechnical'
 import { formatDZD } from '@/utils/units'
+import { readView } from '@/views/viewMode'
+import { ViewWindow } from '@/views/ViewWindow'
+import { useDesignSync } from '@/views/useDesignSync'
+import { Scene3D } from '@/views/Scene3D'
 
 export default function App(): React.JSX.Element {
+  const view = readView()
+  if (view !== 'designer') return <ViewBranch view={view} />
+  return <Designer />
+}
+
+function ViewBranch({ view }: { view: Exclude<ReturnType<typeof readView>, 'designer'> }): React.JSX.Element {
+  if (view === '3d') return <Scene3DWrapper />
+  return <ViewWindow mode={view} />
+}
+
+function Scene3DWrapper(): React.JSX.Element {
+  useDesignSync('receiver')
+  return <Scene3D />
+}
+
+function Designer(): React.JSX.Element {
   const { t } = useTranslation()
+  useDesignSync('broadcaster')
   const tenant = useTenantStore((s) => s.tenant)
   const loadTenant = useTenantStore((s) => s.load)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [designsOpen, setDesignsOpen] = useState(false)
   const [calcOpen, setCalcOpen] = useState(false)
+  const [viewMenuOpen, setViewMenuOpen] = useState(false)
   const [toastOpen, setToastOpen] = useState(false)
   const [ctx, setCtx] = useState<{ objectId: string; screenX: number; screenY: number } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -126,6 +149,7 @@ export default function App(): React.JSX.Element {
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenDesigns={() => setDesignsOpen(true)}
         onOpenCalculator={() => setCalcOpen(true)}
+        onOpenViewMenu={() => setViewMenuOpen(true)}
         onExportClientPdf={onExportClient}
         onExportWorkerPdf={onExportWorker}
         onConvertToInvoice={onConvertToInvoice}
@@ -189,6 +213,7 @@ export default function App(): React.JSX.Element {
           onPromoteToCanvas={(r) => { newDesign(); setRoom(r) }}
         />
       )}
+      {viewMenuOpen && <ViewMenu onClose={() => setViewMenuOpen(false)} />}
       {toastOpen && tenant && (
         <ShareToast
           tenant={tenant}

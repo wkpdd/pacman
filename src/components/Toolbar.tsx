@@ -8,6 +8,7 @@ interface Props {
   onOpenSettings: () => void
   onOpenDesigns: () => void
   onOpenCalculator: () => void
+  onOpenViewMenu: () => void
   onExportClientPdf: () => void
   onExportWorkerPdf: () => void
   onConvertToInvoice: () => void
@@ -20,6 +21,7 @@ export function Toolbar({
   onOpenSettings,
   onOpenDesigns,
   onOpenCalculator,
+  onOpenViewMenu,
   onExportClientPdf,
   onExportWorkerPdf,
   onConvertToInvoice,
@@ -51,6 +53,7 @@ export function Toolbar({
         </button>
         <button onClick={onOpenDesigns} title={t('app.open')}>📂</button>
         <button onClick={onOpenCalculator} title="Calculateur rapide">🧮</button>
+        <button onClick={onOpenViewMenu} title="Ouvrir une vue dans une nouvelle fenêtre">👁</button>
         <input
           className="design-name"
           value={designName}
