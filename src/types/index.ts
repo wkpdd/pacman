@@ -23,6 +23,11 @@ export type ObjectKind =
   | 'led-strip'
   | 'retombee'
   | 'multi-level'
+  | 'obstacle'
+  | 'cloison'
+
+/** BA13 plaque variants — different per-m² prices and use cases. */
+export type PlaqueType = 'standard' | 'hydrofuge' | 'ignifuge' | 'phonique'
 
 /** A placed object on the canvas. All coordinates in cm, origin = room top-left. */
 export interface PlacedObject {
@@ -50,6 +55,12 @@ export interface PlacedObject {
     sides?: Array<'top' | 'right' | 'bottom' | 'left'>
     /** for retombée — drop in cm */
     drop?: number
+    /** for obstacles — text label (e.g. "cheminée", "poutre") */
+    label?: string
+    /** for cloison — wall thickness in cm */
+    thickness?: number
+    /** for cloison — height in cm (full wall by default = room height) */
+    wallHeight?: number
   }
 }
 
@@ -84,6 +95,11 @@ export interface Design {
     laborPerM2: number
     flatLabor?: number
     paymentMode: PaymentMode
+    /** plaque type — affects unit price + label on worker plan */
+    plaqueType?: PlaqueType
+    /** double layer ceiling (BA13 + BA13 = BA25). Doubles plaques + screws +
+     *  joint band. Profiles unchanged. */
+    doubleLayer?: boolean
   }
   totals?: Totals
   /** assigned when the design is converted to a facture */

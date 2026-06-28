@@ -73,6 +73,38 @@ export function PropertiesPanel(): React.JSX.Element {
               onChange={(v) => patchData(obj.id, { drop: v })}
             />
           )}
+          {obj.kind === 'obstacle' && (
+            <label className="num-field">
+              <span>Libellé</span>
+              <input
+                type="text"
+                value={obj.data?.label ?? ''}
+                onChange={(e) => patchData(obj.id, { label: e.target.value })}
+                placeholder="cheminée, poutre, trappe…"
+              />
+            </label>
+          )}
+          {obj.kind === 'cloison' && (
+            <div className="prop-grid">
+              <NumField
+                label="Épaisseur"
+                value={obj.data?.thickness ?? 7}
+                min={5}
+                max={20}
+                step={1}
+                suffix="cm"
+                onChange={(v) => patchData(obj.id, { thickness: v })}
+              />
+              <NumField
+                label="Hauteur"
+                value={obj.data?.wallHeight ?? room.height}
+                min={50}
+                step={10}
+                suffix="cm"
+                onChange={(v) => patchData(obj.id, { wallHeight: v })}
+              />
+            </div>
+          )}
           {obj.kind === 'corniche' && (
             <div className="corniche-controls">
               <label className="toggle">

@@ -4,8 +4,9 @@ import { useTenantStore } from '@/store/tenantStore'
 import { calculate } from '@/modules/faux-plafond/calculations'
 import { formatDZD, formatNumber } from '@/utils/units'
 import { useMemo, useState } from 'react'
-import type { ClientInfo, Design, PaymentMode } from '@/types'
+import type { ClientInfo, Design, PaymentMode, PlaqueType } from '@/types'
 import { RATIOS } from '@/modules/faux-plafond/defaults'
+import { PLAQUE_TYPE } from '@/modules/faux-plafond/library'
 
 export function useCalc() {
   const room = useCanvasStore((s) => s.room)
@@ -16,7 +17,9 @@ export function useCalc() {
   const [options, setOptions] = useState<Design['options']>({
     wastePct: RATIOS.wastePct,
     laborPerM2: RATIOS.laborPerM2,
-    paymentMode: 'cash'
+    paymentMode: 'cash',
+    plaqueType: 'standard',
+    doubleLayer: false
   })
   const [client, setClient] = useState<ClientInfo>({ name: '' })
 
@@ -113,7 +116,42 @@ export function CostPanel({ result, options, setOptions, client, setClient }: Pr
               <option value="cheque">{t('pricing.paymentCheque')}</option>
             </select>
           </label>
+          <label>
+            <span>Type plaque</span>
+            <select
+              value={options.plaqueType ?? 'standard'}
+              onChange={(e) => setOptions({ ...options, plaqueType: e.target.value as PlaqueType })}
+            >
+              {Object.entries(PLAQUE_TYPE).map(([key, info]) => (
+                <option key={key} value={key}>{info.labelFr}</option>
+              ))}
+            </select>
+          </label>
+          <label className="toggle wide">
+            <input
+              type="checkbox"
+              checked={!!options.doubleLayer}
+              onChange={(e) => setOptions({ ...options, doubleLayer: e.target.checked })}
+            />
+            <span>2 couches BA13 (BA25)</span>
+          </label>
         </div>
+      </section>
+
+      <section className="panel-section">
+        <h3>Métrés placo</h3>
+        <Row label="Surface plafond" value={`${formatNumber(geometry.ceilingAreaM2, 2)} m²`} />
+        {geometry.obstacleAreaM2 > 0 && (
+          <Row label="− Obstacles" value={`${formatNumber(geometry.obstacleAreaM2, 2)} m²`} />
+        )}
+        {geometry.retombeeAreaM2 > 0 && (
+          <Row label="+ Retombée" value={`${formatNumber(geometry.retombeeAreaM2 + geometry.retombeeVerticalM2, 2)} m²`} />
+        )}
+        {geometry.cloisonAreaM2 > 0 && (
+          <Row label="+ Cloisons (2 faces)" value={`${formatNumber(geometry.cloisonAreaM2, 2)} m²`} />
+        )}
+        <Row label="Surface facturée" value={`${formatNumber(geometry.billableM2, 2)} m²`} strong />
+        <Row label="Plaques (layout)" value={`${result.plaqueLayout.fullPlaquesNeeded} dont ${result.plaqueLayout.plaques.filter((p) => p.cut).length} coupées`} />
       </section>
 
       <section className="panel-section scroll-section">

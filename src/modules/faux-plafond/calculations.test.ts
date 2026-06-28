@@ -33,10 +33,13 @@ describe('calculate — empty room', () => {
     expect(calc.geometry.retombeeAreaM2).toBe(0)
   })
 
-  it('rounds plaque BA13 up to whole plaques with 10 % waste', () => {
+  it('plaque count comes from the actual layout, not an area heuristic', () => {
     const plaque = calc.materials.find((m) => m.id === 'ba13')!
-    // 20 m² × 1.10 / 3 m² = 7.33 → 8 plaques
-    expect(plaque.quantity).toBe(8)
+    // 4 × 5 m room: best layout is 4 cols × 2 rows = 8 plaques.
+    // With 10% safety on top: ceil(8 × 1.10) = 9 plaques.
+    expect(plaque.quantity).toBe(9)
+    expect(calc.plaqueLayout.plaques.length).toBe(8)
+    expect(calc.plaqueLayout.fullPlaquesNeeded).toBe(8)
   })
 
   it('computes labor by m² when no flat rate set', () => {
@@ -112,5 +115,69 @@ describe('calculate — retombée adds vertical face', () => {
     const plaqueNo = calcNo.materials.find((m) => m.id === 'ba13')!
     const plaqueWith = calcWith.materials.find((m) => m.id === 'ba13')!
     expect(plaqueWith.quantity).toBeGreaterThan(plaqueNo.quantity)
+  })
+})
+
+describe('calculate — obstacles, layers, plaque types', () => {
+  it('obstacle subtracts from billable area but adds cutout perimeter', () => {
+    const calc = calculate(
+      blankDesign({
+        objects: [
+          {
+            id: 'o1',
+            kind: 'obstacle',
+            moduleId: 'obstacle-cheminee',
+            x: 100, y: 100, width: 60, height: 60, rotation: 0,
+            data: { label: 'cheminée' }
+          }
+        ]
+      })
+    )
+    expect(calc.geometry.obstacleAreaM2).toBeCloseTo(0.36, 5)
+    expect(calc.geometry.billableM2).toBeCloseTo(20 - 0.36, 5)
+    // Cornière now has 4 × 0.6 m extra around the cutout (2.4 m)
+    const corniere = calc.materials.find((m) => m.id === 'corniere')!
+    const ref = calculate(blankDesign()).materials.find((m) => m.id === 'corniere')!
+    expect(corniere.quantity).toBeGreaterThan(ref.quantity)
+  })
+
+  it('double layer doubles the plaque count and bumps screws', () => {
+    const single = calculate(blankDesign())
+    const double = calculate(blankDesign({ options: { wastePct: 0.1, laborPerM2: 1200, paymentMode: 'bank', doubleLayer: true } }))
+    const ps = single.materials.find((m) => m.id === 'ba13')!
+    const pd = double.materials.find((m) => m.id === 'ba13')!
+    expect(pd.quantity).toBe(ps.quantity * 2)
+    const vs = single.materials.find((m) => m.id === 'vis')!
+    const vd = double.materials.find((m) => m.id === 'vis')!
+    // Raw screw count doubles even when the rounded box count doesn't.
+    expect(vd.rawQuantity).toBeCloseTo(vs.rawQuantity * 2, 3)
+  })
+
+  it('hydrofuge plaque type bumps unit price ~45%', () => {
+    const std = calculate(blankDesign())
+    const hyd = calculate(blankDesign({ options: { wastePct: 0.1, laborPerM2: 1200, paymentMode: 'bank', plaqueType: 'hydrofuge' } }))
+    const pStd = std.materials.find((m) => m.id === 'ba13')!
+    const pHyd = hyd.materials.find((m) => m.id === 'ba13')!
+    expect(pHyd.unitPriceDZD).toBeGreaterThan(pStd.unitPriceDZD)
+    expect(pHyd.unitPriceDZD / pStd.unitPriceDZD).toBeCloseTo(1.45, 1)
+  })
+
+  it('cloison adds both faces to billable area', () => {
+    const calc = calculate(
+      blankDesign({
+        objects: [
+          {
+            id: 'c1',
+            kind: 'cloison',
+            moduleId: 'cloison-standard',
+            x: 100, y: 100, width: 300, height: 7, rotation: 0,
+            data: { thickness: 7, wallHeight: 270 }
+          }
+        ]
+      })
+    )
+    // 3 m × 2.7 m × 2 sides = 16.2 m²
+    expect(calc.geometry.cloisonAreaM2).toBeCloseTo(16.2, 2)
+    expect(calc.geometry.billableM2).toBeCloseTo(20 + 16.2, 2)
   })
 })

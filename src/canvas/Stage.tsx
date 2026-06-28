@@ -6,6 +6,7 @@ import { useContainerSize, fitScale } from './viewport'
 import { snap } from './snapping'
 import type { PlacedObject } from '@/types'
 import { polylineLengthM } from '@/utils/units'
+import { layoutPlaques } from '@/modules/faux-plafond/plaqueLayout'
 
 const GRID_STEP_CM = 10
 const SNAP_THRESHOLD_CM = 8 // generous on touch — forgiving hit areas
@@ -31,6 +32,8 @@ export function CanvasStage({ onContextRequest }: StageProps): React.JSX.Element
   const [guides, setGuides] = useState<Array<{ kind: 'v' | 'h'; pos: number }>>([])
   const [showGrid, setShowGrid] = useState(true)
   const [showDims, setShowDims] = useState(true)
+  const [showPlaqueLayout, setShowPlaqueLayout] = useState(false)
+  const [showSupportGrid, setShowSupportGrid] = useState(false)
 
   // Expose the stage + view-mode setters so the PDF exporter can swap
   // the canvas between "clean client render" and "dimensioned plan".
@@ -43,6 +46,8 @@ export function CanvasStage({ onContextRequest }: StageProps): React.JSX.Element
     w.__decorViewMode = (m) => {
       setShowDims(m === 'plan')
       setShowGrid(m === 'plan')
+      setShowPlaqueLayout(m === 'plan')
+      setShowSupportGrid(m === 'plan')
     }
     return () => {
       w.__decorStage = null
@@ -203,6 +208,8 @@ export function CanvasStage({ onContextRequest }: StageProps): React.JSX.Element
         <Layer listening={false}>
           <Rect x={0} y={0} width={room.width} height={room.length} fill="#fef3c7" stroke="#0f172a" strokeWidth={2 / scale} />
           {showGrid && <GridLines room={room} step={GRID_STEP_CM} scale={scale} />}
+          {showSupportGrid && <SupportGrid room={room} scale={scale} />}
+          {showPlaqueLayout && <PlaqueLayoutOverlay room={room} objects={objects} scale={scale} />}
         </Layer>
 
         {/* ---- Object layer ---- */}
@@ -277,8 +284,103 @@ export function CanvasStage({ onContextRequest }: StageProps): React.JSX.Element
         <button onClick={() => setScale((s) => Math.max(0.05, s / 1.2))}>−</button>
         <button onClick={() => setShowGrid((g) => !g)} className={showGrid ? 'on' : ''} title="Grille">#</button>
         <button onClick={() => setShowDims((d) => !d)} className={showDims ? 'on' : ''} title="Cotes">⊟</button>
+        <button onClick={() => setShowPlaqueLayout((p) => !p)} className={showPlaqueLayout ? 'on' : ''} title="Layout BA13">▦</button>
+        <button onClick={() => setShowSupportGrid((g) => !g)} className={showSupportGrid ? 'on' : ''} title="Fourrures + suspentes">⫼</button>
       </div>
     </div>
+  )
+}
+
+/**
+ * Fourrures F530 every 60 cm parallel to the shorter axis; suspentes at
+ * 1 m intervals along each fourrure. Reads as the structural skeleton
+ * the placo worker actually installs.
+ */
+function SupportGrid({ room, scale }: { room: { width: number; length: number }; scale: number }) {
+  const FOURRURE_SPACING = 60 // cm
+  const SUSPENTE_SPACING = 100 // cm along the fourrure
+  const els: React.JSX.Element[] = []
+  // Run fourrures along the longer axis so each fourrure stays continuous.
+  const horizontal = room.width >= room.length
+  if (horizontal) {
+    for (let y = FOURRURE_SPACING / 2; y < room.length; y += FOURRURE_SPACING) {
+      els.push(<Line key={`f${y}`} points={[0, y, room.width, y]} stroke="#475569" strokeWidth={1.4 / scale} opacity={0.85} />)
+      for (let x = SUSPENTE_SPACING / 2; x < room.width; x += SUSPENTE_SPACING) {
+        els.push(<Rect key={`s${x}-${y}`} x={x - 3 / scale} y={y - 3 / scale} width={6 / scale} height={6 / scale} fill="#0f172a" />)
+      }
+    }
+  } else {
+    for (let x = FOURRURE_SPACING / 2; x < room.width; x += FOURRURE_SPACING) {
+      els.push(<Line key={`f${x}`} points={[x, 0, x, room.length]} stroke="#475569" strokeWidth={1.4 / scale} opacity={0.85} />)
+      for (let y = SUSPENTE_SPACING / 2; y < room.length; y += SUSPENTE_SPACING) {
+        els.push(<Rect key={`s${x}-${y}`} x={x - 3 / scale} y={y - 3 / scale} width={6 / scale} height={6 / scale} fill="#0f172a" />)
+      }
+    }
+  }
+  return <>{els}</>
+}
+
+/**
+ * BA13 1.20 × 2.50 m plaque layout overlay. Picks the lower-waste
+ * orientation, numbers each plaque, marks cut plaques with diagonal hatching,
+ * highlights obstacle cutouts in red.
+ */
+function PlaqueLayoutOverlay({
+  room,
+  objects,
+  scale
+}: {
+  room: { width: number; length: number; height: number }
+  objects: PlacedObject[]
+  scale: number
+}) {
+  const obstacles = objects.filter((o) => o.kind === 'obstacle')
+  const layout = layoutPlaques(room, obstacles)
+  const fs = Math.max(10, 14 / scale)
+  return (
+    <>
+      {layout.plaques.map((p) => (
+        <Group key={p.n}>
+          <Rect
+            x={p.x}
+            y={p.y}
+            width={p.w}
+            height={p.h}
+            fill={p.cut ? 'rgba(245,158,11,0.10)' : 'rgba(15,118,110,0.08)'}
+            stroke="#0f172a"
+            strokeWidth={1.1 / scale}
+          />
+          <Text
+            x={p.x + 6 / scale}
+            y={p.y + 6 / scale}
+            text={`#${p.n}`}
+            fontSize={fs}
+            fontStyle="bold"
+            fill="#0f172a"
+          />
+          <Text
+            x={p.x + 6 / scale}
+            y={p.y + p.h - fs * 1.3}
+            text={`${(p.w / 100).toFixed(2)} × ${(p.h / 100).toFixed(2)} m${p.cut ? ' ✂' : ''}`}
+            fontSize={fs * 0.85}
+            fill="#0f172a"
+          />
+          {p.cutouts?.map((c, i) => (
+            <Rect
+              key={i}
+              x={p.x + c.x}
+              y={p.y + c.y}
+              width={c.w}
+              height={c.h}
+              fill="rgba(239,68,68,0.35)"
+              stroke="#ef4444"
+              strokeWidth={1.1 / scale}
+              dash={[4 / scale, 3 / scale]}
+            />
+          ))}
+        </Group>
+      ))}
+    </>
   )
 }
 
@@ -683,6 +785,55 @@ function ObjectShape({
         <Circle x={cx} y={cy} radius={r * 0.32} fill="none" stroke="#a16207" strokeWidth={0.4 / scale} />
         <Circle x={cx} y={cy} radius={r * 0.16} fill="#a16207" />
         <Circle x={cx} y={cy} radius={r * 0.06} fill="#fffbeb" />
+      </Group>
+    )
+  }
+
+  // Obstacle (chimney / opening / column to cut around)
+  if (obj.kind === 'obstacle') {
+    return (
+      <Group {...common}>
+        <Rect width={obj.width} height={obj.height} fill="#0f172a" stroke="#ef4444" strokeWidth={1.5 / scale} />
+        <Line points={[0, 0, obj.width, obj.height]} stroke="#ef4444" strokeWidth={1.5 / scale} />
+        <Line points={[obj.width, 0, 0, obj.height]} stroke="#ef4444" strokeWidth={1.5 / scale} />
+        {selected && (
+          <Text
+            x={4 / scale}
+            y={-(14 / scale)}
+            text={obj.data?.label ?? 'obstacle'}
+            fontSize={12 / scale}
+            fill="#ef4444"
+            fontStyle="bold"
+          />
+        )}
+      </Group>
+    )
+  }
+
+  // Cloison (interior wall partition — viewed in plan as a thick line)
+  if (obj.kind === 'cloison') {
+    const t = Math.max(6, obj.data?.thickness ?? 7)
+    return (
+      <Group {...common}>
+        <Rect width={obj.width} height={t} fill="#cbd5e1" stroke="#0f172a" strokeWidth={1.4 / scale} />
+        {/* studs every 60 cm */}
+        {Array.from({ length: Math.floor(obj.width / 60) + 1 }, (_, i) => (
+          <Line
+            key={i}
+            points={[i * 60, 0, i * 60, t]}
+            stroke="#475569"
+            strokeWidth={1 / scale}
+          />
+        ))}
+        {selected && (
+          <Text
+            x={0}
+            y={t + 6 / scale}
+            text={`Cloison ${(obj.width / 100).toFixed(2)} m × H ${((obj.data?.wallHeight ?? room.height) / 100).toFixed(2)} m`}
+            fontSize={12 / scale}
+            fill="#0f172a"
+          />
+        )}
       </Group>
     )
   }

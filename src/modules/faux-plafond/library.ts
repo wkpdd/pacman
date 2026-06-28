@@ -158,6 +158,53 @@ export const FAUX_PLAFOND_LIBRARY: LibraryModule[] = [
     iconSvg: svg(
       '<path d="M10 28 Q10 18 20 18 Q24 10 32 14 Q42 12 42 24 Q44 32 34 32 L14 32 Q6 32 10 28" fill="#e2e8f0" stroke="#0f172a" stroke-width="1.5"/>'
     )
+  },
+  {
+    id: 'obstacle-cheminee',
+    kind: 'obstacle',
+    labelFr: 'Cheminée / poteau',
+    labelAr: 'مدخنة / عمود',
+    unit: 'm2',
+    // Obstacles subtract from billable area, but the cutout edge needs extra
+    // perimeter rail. Price is for the cutout + finishing.
+    defaultPriceDZD: 1500,
+    defaultCostDZD: 600,
+    defaultWidthCm: 60,
+    defaultHeightCm: 60,
+    iconSvg: svg(
+      '<rect x="14" y="14" width="20" height="20" fill="#0f172a" stroke="#0f172a"/><line x1="14" y1="14" x2="34" y2="34" stroke="#f59e0b" stroke-width="2"/><line x1="34" y1="14" x2="14" y2="34" stroke="#f59e0b" stroke-width="2"/>'
+    ),
+    noteFr: 'Zone à découper dans le plafond. Soustraite du m² facturé.'
+  },
+  {
+    id: 'obstacle-opening',
+    kind: 'obstacle',
+    labelFr: 'Trappe / spot encastré',
+    labelAr: 'فتحة / بقعة مدمجة',
+    unit: 'unit',
+    defaultPriceDZD: 800,
+    defaultCostDZD: 300,
+    defaultWidthCm: 50,
+    defaultHeightCm: 50,
+    iconSvg: svg(
+      '<rect x="14" y="14" width="20" height="20" fill="none" stroke="#0f172a" stroke-width="1.5" stroke-dasharray="3 2"/><circle cx="24" cy="24" r="4" fill="#0f172a"/>'
+    )
+  },
+  {
+    id: 'cloison-standard',
+    kind: 'cloison',
+    labelFr: 'Cloison BA13 (72 mm)',
+    labelAr: 'حاجز BA13 (72 مم)',
+    unit: 'm2',
+    // Per m² of wall surface — includes rail+stud profiles + plaques both sides
+    defaultPriceDZD: 3200,
+    defaultCostDZD: 1600,
+    defaultWidthCm: 300,
+    defaultHeightCm: 7,
+    iconSvg: svg(
+      '<rect x="6" y="20" width="36" height="8" fill="#cbd5e1" stroke="#0f172a" stroke-width="1.5"/><line x1="12" y1="20" x2="12" y2="28" stroke="#94a3b8"/><line x1="20" y1="20" x2="20" y2="28" stroke="#94a3b8"/><line x1="28" y1="20" x2="28" y2="28" stroke="#94a3b8"/><line x1="36" y1="20" x2="36" y2="28" stroke="#94a3b8"/>'
+    ),
+    noteFr: 'Cloison de séparation. Plaques des deux côtés + montants 48.'
   }
 ]
 
@@ -172,5 +219,15 @@ export const LIBRARY_CATEGORIES: Array<{ kind: ObjectKind; labelFr: string; labe
   { kind: 'spotlight-grid', labelFr: 'Grilles', labelAr: 'شبكات' },
   { kind: 'led-strip', labelFr: 'LED', labelAr: 'LED' },
   { kind: 'retombee', labelFr: 'Retombées', labelAr: 'إسقاطات' },
-  { kind: 'multi-level', labelFr: 'Multi-niveaux', labelAr: 'متعدد المستويات' }
+  { kind: 'multi-level', labelFr: 'Multi-niveaux', labelAr: 'متعدد المستويات' },
+  { kind: 'obstacle', labelFr: 'Obstacles', labelAr: 'عوائق' },
+  { kind: 'cloison', labelFr: 'Cloisons', labelAr: 'حواجز' }
 ]
+
+/** Per-type unit-price multipliers for BA13 plaques. Tenants can override. */
+export const PLAQUE_TYPE: Record<import('@/types').PlaqueType, { labelFr: string; labelAr: string; priceMultiplier: number; color: string }> = {
+  standard:  { labelFr: 'BA13 standard',  labelAr: 'BA13 عادي',   priceMultiplier: 1.0, color: '#e2e8f0' },
+  hydrofuge: { labelFr: 'BA13 hydrofuge', labelAr: 'BA13 مقاوم للماء', priceMultiplier: 1.45, color: '#a7f3d0' },
+  ignifuge:  { labelFr: 'BA13 ignifuge',  labelAr: 'BA13 مقاوم للحريق', priceMultiplier: 1.65, color: '#fecaca' },
+  phonique:  { labelFr: 'BA13 phonique',  labelAr: 'BA13 عازل صوت',    priceMultiplier: 1.55, color: '#bae6fd' }
+}

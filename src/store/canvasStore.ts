@@ -105,7 +105,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                   ? { drop: 25 }
                   : mod.kind === 'corniche'
                     ? { perimeter: true, sides: ['top', 'right', 'bottom', 'left'] }
-                    : undefined
+                    : mod.kind === 'obstacle'
+                      ? { label: mod.labelFr.split(' ')[0].toLowerCase() }
+                      : mod.kind === 'cloison'
+                        ? { thickness: 7, wallHeight: 270 }
+                        : undefined
         }
         s.objects.push(obj)
         s.selectionId = id

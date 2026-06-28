@@ -7,8 +7,9 @@ import {
   rectPerimeterM
 } from '@/utils/units'
 import { computeTotals } from '@/utils/fiscal'
-import { findModule } from './library'
+import { PLAQUE_TYPE, findModule } from './library'
 import { MATERIAL_DEFAULTS, RATIOS } from './defaults'
+import { layoutPlaques } from './plaqueLayout'
 
 export interface MaterialLine {
   id: string
@@ -43,20 +44,38 @@ export interface CalcResult {
     perimeterM: number
     retombeeAreaM2: number
     retombeeVerticalM2: number
+    obstacleAreaM2: number
+    cloisonAreaM2: number
+    billableM2: number
   }
   materials: MaterialLine[]
   decorative: DecorativeLine[]
   totals: ReturnType<typeof computeTotals>
+  /** the actual plaque layout used for the worker plan */
+  plaqueLayout: ReturnType<typeof layoutPlaques>
 }
 
 /** Compute everything from the canvas state alone. Pure, deterministic. */
 export function calculate(design: Design): CalcResult {
   const { room, objects, options } = design
   const wastePct = options.wastePct ?? RATIOS.wastePct
+  const layerCount = options.doubleLayer ? 2 : 1
+  const plaqueType = options.plaqueType ?? 'standard'
+  const plaqueInfo = PLAQUE_TYPE[plaqueType]
+
   const ceilingAreaM2 = rectAreaM2(room.width, room.length)
   const perimeterM = rectPerimeterM(room.width, room.length)
 
-  // Retombée geometry — sum dropped areas + their vertical faces.
+  // ---- Obstacles: subtract from billable area, add cutout edge to perimeter
+  let obstacleAreaM2 = 0
+  let obstacleEdgeM = 0
+  for (const o of objects) {
+    if (o.kind !== 'obstacle') continue
+    obstacleAreaM2 += rectAreaM2(o.width, o.height)
+    obstacleEdgeM += rectPerimeterM(o.width, o.height)
+  }
+
+  // ---- Retombée geometry — sum dropped areas + their vertical faces.
   let retombeeAreaM2 = 0
   let retombeeVerticalM2 = 0
   for (const o of objects) {
@@ -67,56 +86,81 @@ export function calculate(design: Design): CalcResult {
     retombeeVerticalM2 += rectPerimeterM(o.width, o.height) * drop
   }
 
-  const billableAreaM2 = ceilingAreaM2 + retombeeAreaM2 + retombeeVerticalM2
+  // ---- Cloisons: full surface = length × wallHeight × 2 sides (BA13 both faces)
+  let cloisonAreaM2 = 0
+  let cloisonLengthM = 0
+  for (const o of objects) {
+    if (o.kind !== 'cloison') continue
+    const length = cmToM(o.width)
+    const height = cmToM(o.data?.wallHeight ?? room.height)
+    cloisonLengthM += length
+    cloisonAreaM2 += length * height * 2 // both sides
+  }
 
-  // ---- Suspended ceiling materials (BA13 + profiles) ----
+  const billableM2 =
+    Math.max(0, ceilingAreaM2 - obstacleAreaM2) + retombeeAreaM2 + retombeeVerticalM2 + cloisonAreaM2
+
+  // ---- Actual plaque layout (for accurate count and worker plan)
+  const obstacles = objects.filter((o) => o.kind === 'obstacle')
+  const plaqueLayout = layoutPlaques(room, obstacles)
+
   const materials: MaterialLine[] = []
 
-  const plaqueRaw =
-    (billableAreaM2 * (1 + wastePct)) / (MATERIAL_DEFAULTS.plaqueBA13.unitSize ?? 3)
-  materials.push(line(MATERIAL_DEFAULTS.plaqueBA13, plaqueRaw, 1, `incl. ${(wastePct * 100).toFixed(0)}% perte`))
+  // Plaques: ceiling from layout, retombée + cloison by area. Times layer count.
+  const ceilingPlaques = Math.ceil(plaqueLayout.fullPlaquesNeeded * (1 + wastePct))
+  const retombeePlaques = Math.ceil(((retombeeAreaM2 + retombeeVerticalM2) * (1 + wastePct)) / 3)
+  const cloisonPlaques = Math.ceil((cloisonAreaM2 * (1 + wastePct)) / 3)
+  const plaquesNeeded = (ceilingPlaques + retombeePlaques + cloisonPlaques) * layerCount
+  const plaqueLine = {
+    ...MATERIAL_DEFAULTS.plaqueBA13,
+    labelFr: `${plaqueInfo.labelFr}${layerCount > 1 ? ` (×${layerCount} couches)` : ''}`,
+    unitPriceDZD: Math.round(MATERIAL_DEFAULTS.plaqueBA13.unitPriceDZD * plaqueInfo.priceMultiplier)
+  }
+  const breakdownParts = [
+    `${ceilingPlaques} plafond`,
+    retombeePlaques ? `${retombeePlaques} retombée` : null,
+    cloisonPlaques ? `${cloisonPlaques} cloison` : null,
+    layerCount > 1 ? `×${layerCount} couches` : null,
+    `${(wastePct * 100).toFixed(0)}% perte`
+  ].filter(Boolean).join(' · ')
+  materials.push(line(plaqueLine, plaquesNeeded, 1, breakdownParts))
 
-  const fourrureRaw = billableAreaM2 * RATIOS.fourrurePerM2 * (1 + wastePct)
+  // Fourrures — only for the ceiling area (cloisons use rail+stud, calc below)
+  const ceilingBillable = Math.max(0, ceilingAreaM2 - obstacleAreaM2) + retombeeAreaM2 + retombeeVerticalM2
+  const fourrureRaw = ceilingBillable * RATIOS.fourrurePerM2 * (1 + wastePct)
   materials.push(line(MATERIAL_DEFAULTS.fourrureF530, fourrureRaw, 1))
 
-  // Perimeter rails follow room perimeter + each retombée perimeter.
-  let cornierePerimeterM = perimeterM
+  // Perimeter rails: room perimeter + retombée perimeters + obstacle cutout edges + cloison lengths × 2 (top+bottom rail)
+  let cornierePerimeterM = perimeterM + obstacleEdgeM
   for (const o of objects) {
     if (o.kind === 'retombee') cornierePerimeterM += rectPerimeterM(o.width, o.height)
   }
+  cornierePerimeterM += cloisonLengthM * 2
   materials.push(line(MATERIAL_DEFAULTS.cornierePerimetrique, cornierePerimeterM * (1 + wastePct), 1))
 
-  const suspenteRaw = billableAreaM2 * RATIOS.suspentePerM2
+  // Suspentes (ceiling only)
+  const suspenteRaw = ceilingBillable * RATIOS.suspentePerM2
   materials.push(line(MATERIAL_DEFAULTS.suspente, suspenteRaw, 1))
 
-  const visRaw = billableAreaM2 * RATIOS.visPerM2
+  // Screws — proportional to plaque surface × layer count
+  const visRaw = billableM2 * RATIOS.visPerM2 * layerCount
   materials.push(
-    line(
-      MATERIAL_DEFAULTS.visTTPC,
-      visRaw / (MATERIAL_DEFAULTS.visTTPC.unitSize ?? 1000),
-      1
-    )
+    line(MATERIAL_DEFAULTS.visTTPC, visRaw / (MATERIAL_DEFAULTS.visTTPC.unitSize ?? 1000), 1)
   )
 
-  const bandeRaw = billableAreaM2 * RATIOS.bandeJointPerM2
+  // Joint band — every plaque joint, doubled when 2 layers
+  const bandeRaw = billableM2 * RATIOS.bandeJointPerM2 * (layerCount > 1 ? 1.4 : 1)
   materials.push(
-    line(
-      MATERIAL_DEFAULTS.bandeJoint,
-      bandeRaw / (MATERIAL_DEFAULTS.bandeJoint.unitSize ?? 75),
-      1
-    )
+    line(MATERIAL_DEFAULTS.bandeJoint, bandeRaw / (MATERIAL_DEFAULTS.bandeJoint.unitSize ?? 75), 1)
   )
 
-  const enduitRaw = billableAreaM2 * RATIOS.enduitKgPerM2
+  // Enduit
+  const enduitRaw = billableM2 * RATIOS.enduitKgPerM2 * (layerCount > 1 ? 1.3 : 1)
   materials.push(
-    line(
-      MATERIAL_DEFAULTS.enduitJoint,
-      enduitRaw / (MATERIAL_DEFAULTS.enduitJoint.unitSize ?? 25),
-      1
-    )
+    line(MATERIAL_DEFAULTS.enduitJoint, enduitRaw / (MATERIAL_DEFAULTS.enduitJoint.unitSize ?? 25), 1)
   )
 
-  // ---- Decorative lines (from placed objects) ----
+  // ---- Decorative + obstacle + cloison lines (from placed objects) ----
   const decorative: DecorativeLine[] = []
   let spotCount = 0
   let ledTotalM = 0
@@ -137,19 +181,13 @@ export function calculate(design: Design): CalcResult {
     }
   }
 
-  // LED drivers (1 per 5 m linear)
   if (ledTotalM > 0) {
     const drivers = Math.ceil(ledTotalM / (MATERIAL_DEFAULTS.driverLED.unitSize ?? 5))
-    materials.push(
-      line(MATERIAL_DEFAULTS.driverLED, drivers, 1, `pour ${ledTotalM.toFixed(1)} ml`)
-    )
+    materials.push(line(MATERIAL_DEFAULTS.driverLED, drivers, 1, `pour ${ledTotalM.toFixed(1)} ml`))
   }
-  // Spot drivers (1 per 6 spots)
   if (spotCount > 0) {
     const drivers = Math.ceil(spotCount / (MATERIAL_DEFAULTS.driverSpot.unitSize ?? 6))
-    materials.push(
-      line(MATERIAL_DEFAULTS.driverSpot, drivers, 1, `pour ${spotCount} spots`)
-    )
+    materials.push(line(MATERIAL_DEFAULTS.driverSpot, drivers, 1, `pour ${spotCount} spots`))
   }
 
   // ---- Pricing ----
@@ -157,7 +195,7 @@ export function calculate(design: Design): CalcResult {
   const laborHT =
     options.flatLabor != null
       ? options.flatLabor
-      : (options.laborPerM2 ?? RATIOS.laborPerM2) * billableAreaM2
+      : (options.laborPerM2 ?? RATIOS.laborPerM2) * billableM2 * layerCount
   const totals = computeTotals({
     materialsHT,
     laborHT,
@@ -169,16 +207,20 @@ export function calculate(design: Design): CalcResult {
       ceilingAreaM2,
       perimeterM,
       retombeeAreaM2,
-      retombeeVerticalM2
+      retombeeVerticalM2,
+      obstacleAreaM2,
+      cloisonAreaM2,
+      billableM2
     },
     materials,
     decorative,
-    totals
+    totals,
+    plaqueLayout
   }
 }
 
 function line(
-  mat: (typeof MATERIAL_DEFAULTS)[keyof typeof MATERIAL_DEFAULTS],
+  mat: { id: string; labelFr: string; labelAr: string; unit: string; unitPriceDZD: number },
   raw: number,
   quantum: number,
   note?: string
@@ -207,8 +249,6 @@ function decorativeFor(
   let unit = mod.unit as string
   switch (o.kind) {
     case 'corniche': {
-      // Perimeter mode (default): follow the room edges flagged in sides.
-      // Stick mode: a single segment defined by `width`.
       if (o.data?.perimeter !== false) {
         const sides = o.data?.sides ?? ['top', 'right', 'bottom', 'left']
         let len = 0
@@ -245,6 +285,16 @@ function decorativeFor(
     }
     case 'retombee': {
       qty = rectAreaM2(o.width, o.height)
+      unit = 'm²'
+      break
+    }
+    case 'obstacle': {
+      qty = rectAreaM2(o.width, o.height)
+      unit = 'm²'
+      break
+    }
+    case 'cloison': {
+      qty = cmToM(o.width) * cmToM(o.data?.wallHeight ?? 270)
       unit = 'm²'
       break
     }
