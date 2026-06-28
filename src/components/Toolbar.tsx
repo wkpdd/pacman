@@ -53,7 +53,13 @@ export function Toolbar({
         </button>
         <button onClick={onOpenDesigns} title={t('app.open')}>📂</button>
         <button onClick={onOpenCalculator} title="Calculateur rapide">🧮</button>
-        <button onClick={onOpenViewMenu} title="Ouvrir une vue dans une nouvelle fenêtre">👁</button>
+        <button
+          className="btn-views"
+          onClick={onOpenViewMenu}
+          title="Ouvrir client / placo / déco / 3D dans une nouvelle fenêtre"
+        >
+          👁 Vues
+        </button>
         <input
           className="design-name"
           value={designName}

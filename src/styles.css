@@ -225,6 +225,14 @@ input:focus, select:focus, textarea:focus {
 .toolbar button:disabled { opacity: 0.4; cursor: not-allowed; }
 .toolbar .btn-primary { background: var(--tint); color: var(--ink); border-color: var(--tint); font-weight: 700; }
 .toolbar .btn-export { background: #1e293b; color: white; }
+.toolbar .btn-views {
+  background: var(--tint);
+  color: var(--ink);
+  border-color: var(--tint);
+  font-weight: 700;
+  padding: 0 14px;
+}
+.toolbar .btn-views:hover { background: #fbbf24; }
 .toolbar-left { display: flex; gap: 8px; align-items: center; }
 .toolbar-center { display: flex; gap: 6px; justify-content: center; }
 .toolbar-right { display: flex; gap: 6px; align-items: center; justify-content: flex-end; }
