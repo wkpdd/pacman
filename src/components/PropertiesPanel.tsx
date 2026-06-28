@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useCanvasStore } from '@/store/canvasStore'
 import { findModule } from '@/modules/faux-plafond/library'
+import { LayersPanel } from './LayersPanel'
 
 export function PropertiesPanel(): React.JSX.Element {
   const { t } = useTranslation()
@@ -18,6 +19,7 @@ export function PropertiesPanel(): React.JSX.Element {
 
   return (
     <aside className="properties-panel">
+      <LayersPanel />
       <section className="panel-section">
         <h3>{t('room.title')}</h3>
         <NumField

@@ -25,9 +25,10 @@ export function CanvasStage({ onContextRequest, viewSpec }: StageProps): React.J
 
   const room = useCanvasStore((s) => s.room)
   const allObjects = useCanvasStore((s) => s.objects)
+  const visible = allObjects.filter((o) => !o.hidden)
   const objects = viewSpec?.visibleKinds
-    ? allObjects.filter((o) => viewSpec.visibleKinds!.includes(o.kind))
-    : allObjects
+    ? visible.filter((o) => viewSpec.visibleKinds!.includes(o.kind))
+    : visible
   const selectionId = useCanvasStore((s) => s.selectionId)
   const select = useCanvasStore((s) => s.select)
   const updateObject = useCanvasStore((s) => s.updateObject)

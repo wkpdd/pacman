@@ -33,6 +33,8 @@ interface CanvasState {
   removeObject: (id: string) => void
   duplicateObject: (id: string) => void
   toggleLock: (id: string) => void
+  toggleHidden: (id: string) => void
+  reorder: (fromIndex: number, toIndex: number) => void
   bringForward: (id: string) => void
   sendBackward: (id: string) => void
   select: (id: string | null) => void
@@ -174,6 +176,32 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         const o = s.objects.find((x) => x.id === id)
         if (!o) return
         o.locked = !o.locked
+        s.isDirty = true
+      })
+    )
+    get().commit()
+  },
+
+  toggleHidden: (id) => {
+    set(
+      produce<CanvasState>((s) => {
+        const o = s.objects.find((x) => x.id === id)
+        if (!o) return
+        o.hidden = !o.hidden
+        s.isDirty = true
+      })
+    )
+    get().commit()
+  },
+
+  reorder: (fromIndex, toIndex) => {
+    set(
+      produce<CanvasState>((s) => {
+        if (fromIndex < 0 || fromIndex >= s.objects.length) return
+        if (toIndex < 0 || toIndex >= s.objects.length) return
+        if (fromIndex === toIndex) return
+        const [item] = s.objects.splice(fromIndex, 1)
+        s.objects.splice(toIndex, 0, item)
         s.isDirty = true
       })
     )

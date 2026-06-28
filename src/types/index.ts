@@ -43,6 +43,8 @@ export interface PlacedObject {
   height: number
   rotation: number
   locked?: boolean
+  /** hidden in the layers panel and on the canvas — does not contribute to calc */
+  hidden?: boolean
   /** kind-specific extras */
   data?: {
     /** for spotlight-grid */

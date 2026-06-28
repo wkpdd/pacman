@@ -57,7 +57,10 @@ export interface CalcResult {
 
 /** Compute everything from the canvas state alone. Pure, deterministic. */
 export function calculate(design: Design): CalcResult {
-  const { room, objects, options } = design
+  const { room, options } = design
+  // Hidden objects are excluded everywhere — they don't count in geometry,
+  // materials, or pricing.
+  const objects = design.objects.filter((o) => !o.hidden)
   const wastePct = options.wastePct ?? RATIOS.wastePct
   const layerCount = options.doubleLayer ? 2 : 1
   const plaqueType = options.plaqueType ?? 'standard'
