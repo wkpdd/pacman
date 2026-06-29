@@ -23,8 +23,15 @@ export interface LaidPlaque {
 
 export interface LayoutResult {
   plaques: LaidPlaque[]
-  /** total full plaques required (each cut plaque counts as 1 full from supplier) */
+  /**
+   * Total full plaques actually required on the shopping list. Already
+   * accounts for the plâtrier's offcut reuse: row-strip cuts that share a
+   * width are combined into one plaque (e.g. three 1.20×1.00 strips come
+   * from a single 1.20×2.50, not three).
+   */
   fullPlaquesNeeded: number
+  /** plaque count if every cell consumed its own fresh plaque (debug/comparison) */
+  naivePlaqueCount: number
   /** sum of usable area covered in m² */
   coveredM2: number
   /** sum of wasted area in m² (offcuts) */
@@ -57,7 +64,6 @@ function layoutInOrientation(
   let n = 0
   let wasteCm2 = 0
   let coveredCm2 = 0
-  let fullPlaques = 0
 
   for (let y = 0; y < room.length; y += plaqueH) {
     for (let x = 0; x < room.width; x += plaqueW) {
@@ -68,7 +74,6 @@ function layoutInOrientation(
       const fullArea = plaqueW * plaqueH
       const usedArea = w * h
       const localWaste = cut ? fullArea - usedArea : 0
-      // attach obstacles overlapping this plaque
       const cutouts: LaidPlaque['cutouts'] = []
       let obstacleCutCm2 = 0
       for (const o of obstacles) {
@@ -100,13 +105,46 @@ function layoutInOrientation(
       })
       coveredCm2 += usedArea - obstacleCutCm2
       wasteCm2 += localWaste + obstacleCutCm2
-      fullPlaques += 1
     }
   }
   return {
     plaques,
-    fullPlaquesNeeded: fullPlaques,
+    fullPlaquesNeeded: smartCount(plaques, plaqueW, plaqueH),
+    naivePlaqueCount: plaques.length,
     coveredM2: coveredCm2 / 10_000,
     wasteM2: wasteCm2 / 10_000
   }
+}
+
+/**
+ * Real-world plaque count assuming the plâtrier combines compatible cuts
+ * from a single fresh plaque. The naive grid algorithm allocates one fresh
+ * plaque per cell — that overcounts because:
+ *
+ *  - Three 1.20 × 1.00 row-strips (full width, partial height) come from
+ *    ONE 1.20 × 2.50 plaque (2.00 m used, 0.50 m offcut), not three.
+ *  - Two 0.60 × 2.50 column-strips (partial width, full height) come from
+ *    one 1.20 × 2.50 plaque, not two.
+ *
+ * Strategy: separate cells by their cut profile and pack each profile
+ * against the appropriate plaque axis. Corner cuts (both dimensions
+ * partial) get their own plaque each — they're irregular enough that
+ * combining them isn't safe in practice.
+ */
+function smartCount(plaques: LaidPlaque[], plaqueW: number, plaqueH: number): number {
+  let full = 0
+  let lengthStripCm = 0  // width = plaqueW, height < plaqueH → pack along plaqueH
+  let widthStripCm = 0   // width < plaqueW, height = plaqueH → pack along plaqueW
+  let corners = 0
+  for (const p of plaques) {
+    const fullW = p.w === plaqueW
+    const fullH = p.h === plaqueH
+    if (fullW && fullH) full += 1
+    else if (fullW && !fullH) lengthStripCm += p.h
+    else if (!fullW && fullH) widthStripCm += p.w
+    else corners += 1
+  }
+  const lengthPlaques = Math.ceil(lengthStripCm / plaqueH)
+  const widthPlaques = Math.ceil(widthStripCm / plaqueW)
+  return full + lengthPlaques + widthPlaques + corners
 }

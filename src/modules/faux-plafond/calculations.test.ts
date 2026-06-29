@@ -33,13 +33,15 @@ describe('calculate — empty room', () => {
     expect(calc.geometry.retombeeAreaM2).toBe(0)
   })
 
-  it('plaque count comes from the actual layout, not an area heuristic', () => {
+  it('plaque count comes from the smart layout, not a per-cell count', () => {
     const plaque = calc.materials.find((m) => m.id === 'ba13')!
-    // 4 × 5 m room: best layout is 4 cols × 2 rows = 8 plaques.
-    // With 10% safety on top: ceil(8 × 1.10) = 9 plaques.
-    expect(plaque.quantity).toBe(9)
+    // 4 × 5 m room: naive grid is 4 cols × 2 rows = 8 cells.
+    // Smart count: 6 full + 1 plaque covering both 0.40×2.50 strips = 7.
+    // With 10% safety: ceil(7 × 1.10) = 8 plaques.
+    expect(plaque.quantity).toBe(8)
     expect(calc.plaqueLayout.plaques.length).toBe(8)
-    expect(calc.plaqueLayout.fullPlaquesNeeded).toBe(8)
+    expect(calc.plaqueLayout.naivePlaqueCount).toBe(8)
+    expect(calc.plaqueLayout.fullPlaquesNeeded).toBe(7)
   })
 
   it('computes labor by m² when no flat rate set', () => {
@@ -193,6 +195,26 @@ describe('calculate — obstacles, layers, plaque types', () => {
     const corniere = calc.materials.find((m) => m.id === 'corniere')!
     const ref = calculate(blankDesign()).materials.find((m) => m.id === 'corniere')!
     expect(corniere.rawQuantity - ref.rawQuantity).toBeCloseTo(5 * 1.10, 1)
+  })
+
+  it('smart count: 3.50 × 6.00 m room — 9 cells but 8 fresh plaques (user scenario)', () => {
+    // Real plâtrier scenario: 3 cols × 3 rows = 9 cells.
+    // - 4 full plaques (rows 1-2, cols 1-2)
+    // - 2 column strips (1.10 × 2.50) — can't combine, so 2 fresh plaques
+    // - 2 row strips (1.20 × 1.00) — 2.00 m total along 2.50 → ONE plaque
+    // - 1 corner cut (1.10 × 1.00) — 1 plaque
+    // Total = 4 + 2 + 1 + 1 = 8.
+    const calc = calculate(
+      blankDesign({
+        room: { width: 350, length: 600, height: 270 }
+      })
+    )
+    expect(calc.plaqueLayout.plaques.length).toBe(9)
+    expect(calc.plaqueLayout.naivePlaqueCount).toBe(9)
+    expect(calc.plaqueLayout.fullPlaquesNeeded).toBe(8)
+    const plaque = calc.materials.find((m) => m.id === 'ba13')!
+    // 8 × 1.10 waste = 8.8 → 9 plaques shopping list (not 10).
+    expect(plaque.quantity).toBe(9)
   })
 
   it('cloison adds both faces to billable area', () => {

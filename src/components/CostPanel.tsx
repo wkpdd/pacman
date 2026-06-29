@@ -151,7 +151,10 @@ export function CostPanel({ result, options, setOptions, client, setClient }: Pr
           <Row label="+ Cloisons (2 faces)" value={`${formatNumber(geometry.cloisonAreaM2, 2)} m²`} />
         )}
         <Row label="Surface facturée" value={`${formatNumber(geometry.billableM2, 2)} m²`} strong />
-        <Row label="Plaques (layout)" value={`${result.plaqueLayout.fullPlaquesNeeded} dont ${result.plaqueLayout.plaques.filter((p) => p.cut).length} coupées`} />
+        <Row
+          label="Plaques (layout)"
+          value={`${result.plaqueLayout.fullPlaquesNeeded} plaques fraîches · ${result.plaqueLayout.naivePlaqueCount} cellules${result.plaqueLayout.naivePlaqueCount !== result.plaqueLayout.fullPlaquesNeeded ? ` (économie : ${result.plaqueLayout.naivePlaqueCount - result.plaqueLayout.fullPlaquesNeeded})` : ''}`}
+        />
       </section>
 
       <section className="panel-section scroll-section">
