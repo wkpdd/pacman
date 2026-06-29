@@ -118,7 +118,7 @@ export const FAUX_PLAFOND_LIBRARY: LibraryModule[] = [
   {
     id: 'led-strip-warm',
     kind: 'led-strip',
-    labelFr: 'Bande LED blanc chaud',
+    labelFr: 'Bande LED blanc chaud (3000 K)',
     labelAr: 'شريط LED أبيض دافئ',
     unit: 'ml',
     defaultPriceDZD: 800,
@@ -128,7 +128,97 @@ export const FAUX_PLAFOND_LIBRARY: LibraryModule[] = [
     iconSvg: svg(
       '<path d="M4 24 Q14 8 24 24 T44 24" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/>'
     ),
-    noteFr: 'Longueur calculée depuis le tracé.'
+    noteFr: 'Blanc chaud 3000 K. 60 LED/m, 9.6 W/m.'
+  },
+  {
+    id: 'led-strip-cool',
+    kind: 'led-strip',
+    labelFr: 'Bande LED blanc froid (6000 K)',
+    labelAr: 'شريط LED أبيض بارد',
+    unit: 'ml',
+    defaultPriceDZD: 850,
+    defaultCostDZD: 380,
+    defaultWidthCm: 200,
+    defaultHeightCm: 1,
+    iconSvg: svg(
+      '<path d="M4 24 Q14 8 24 24 T44 24" fill="none" stroke="#60a5fa" stroke-width="3" stroke-linecap="round"/>'
+    ),
+    noteFr: 'Blanc froid 6000 K. Idéal cuisine / salle de bain.'
+  },
+  {
+    id: 'led-strip-rgb',
+    kind: 'led-strip',
+    labelFr: 'Bande LED RGB',
+    labelAr: 'شريط LED RGB',
+    unit: 'ml',
+    defaultPriceDZD: 1400,
+    defaultCostDZD: 650,
+    defaultWidthCm: 200,
+    defaultHeightCm: 1,
+    iconSvg: svg(
+      '<defs><linearGradient id="rgb" x1="0" y1="0" x2="48" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ef4444"/><stop offset="0.5" stop-color="#22c55e"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs><path d="M4 24 Q14 8 24 24 T44 24" fill="none" stroke="url(#rgb)" stroke-width="3" stroke-linecap="round"/>'
+    ),
+    noteFr: 'Couleur changeante. Contrôleur RGB inclus.'
+  },
+  {
+    id: 'lamp-pendant',
+    kind: 'lamp',
+    labelFr: 'Suspension pendante',
+    labelAr: 'مصباح معلق',
+    unit: 'unit',
+    defaultPriceDZD: 6500,
+    defaultCostDZD: 3000,
+    defaultWidthCm: 35,
+    defaultHeightCm: 35,
+    iconSvg: svg(
+      '<line x1="24" y1="4" x2="24" y2="20" stroke="#0f172a" stroke-width="1.5"/><path d="M14 20 L34 20 L30 36 L18 36 Z" fill="#fde68a" stroke="#0f172a" stroke-width="1.5"/><circle cx="24" cy="38" r="2" fill="#f59e0b"/>'
+    ),
+    noteFr: 'Suspension 80 cm, 1 ampoule E27 60 W.'
+  },
+  {
+    id: 'lamp-chandelier',
+    kind: 'lamp',
+    labelFr: 'Lustre chandelier',
+    labelAr: 'ثريا',
+    unit: 'unit',
+    defaultPriceDZD: 18000,
+    defaultCostDZD: 9000,
+    defaultWidthCm: 80,
+    defaultHeightCm: 80,
+    iconSvg: svg(
+      '<line x1="24" y1="4" x2="24" y2="14" stroke="#0f172a" stroke-width="1.5"/><circle cx="24" cy="22" r="6" fill="#fef3c7" stroke="#a16207" stroke-width="1.2"/><line x1="10" y1="28" x2="38" y2="28" stroke="#0f172a" stroke-width="1.5"/><circle cx="10" cy="32" r="3" fill="#fde68a"/><circle cx="24" cy="32" r="3" fill="#fde68a"/><circle cx="38" cy="32" r="3" fill="#fde68a"/>'
+    ),
+    noteFr: 'Lustre 5 bras, 5 × E14 40 W.'
+  },
+  {
+    id: 'lamp-plafonnier',
+    kind: 'lamp',
+    labelFr: 'Plafonnier LED',
+    labelAr: 'إضاءة سقفية LED',
+    unit: 'unit',
+    defaultPriceDZD: 3500,
+    defaultCostDZD: 1600,
+    defaultWidthCm: 40,
+    defaultHeightCm: 40,
+    iconSvg: svg(
+      '<circle cx="24" cy="24" r="18" fill="#fffbeb" stroke="#0f172a" stroke-width="1.5"/><circle cx="24" cy="24" r="12" fill="#fde68a"/><circle cx="24" cy="24" r="6" fill="#fef3c7"/>'
+    ),
+    noteFr: 'Plafonnier circulaire 36 W LED intégré.'
+  },
+  {
+    id: 'lamp-sconce',
+    kind: 'lamp',
+    labelFr: 'Applique murale',
+    labelAr: 'مصباح حائط',
+    unit: 'unit',
+    defaultPriceDZD: 2800,
+    defaultCostDZD: 1200,
+    defaultWidthCm: 20,
+    defaultHeightCm: 20,
+    iconSvg: svg(
+      '<rect x="6" y="20" width="6" height="14" fill="#0f172a"/><path d="M12 22 L40 16 L40 38 L12 32 Z" fill="#fde68a" stroke="#0f172a" stroke-width="1.5"/>'
+    ),
+    noteFr: 'Applique murale, 1 × E27 40 W.'
   },
   {
     id: 'retombee-rect',
@@ -221,8 +311,32 @@ export const LIBRARY_CATEGORIES: Array<{ kind: ObjectKind; labelFr: string; labe
   { kind: 'retombee', labelFr: 'Retombées', labelAr: 'إسقاطات' },
   { kind: 'multi-level', labelFr: 'Multi-niveaux', labelAr: 'متعدد المستويات' },
   { kind: 'obstacle', labelFr: 'Obstacles', labelAr: 'عوائق' },
-  { kind: 'cloison', labelFr: 'Cloisons', labelAr: 'حواجز' }
+  { kind: 'cloison', labelFr: 'Cloisons', labelAr: 'حواجز' },
+  { kind: 'lamp', labelFr: 'Lampes', labelAr: 'مصابيح' }
 ]
+
+/** Color swatches for canvas + layer panel kind stripe. */
+export const KIND_COLOR: Record<ObjectKind, string> = {
+  corniche: '#cbd5e1',
+  rosace: '#a16207',
+  spotlight: '#f59e0b',
+  'spotlight-grid': '#f59e0b',
+  'led-strip': '#fbbf24',
+  retombee: '#94a3b8',
+  'multi-level': '#94a3b8',
+  obstacle: '#0f172a',
+  cloison: '#475569',
+  lamp: '#a855f7'
+}
+
+/** Default LED metadata for a given color. */
+export const LED_COLOR_INFO: Record<import('@/types').LedColor, { hex: string; emissive: string; labelFr: string; pricePerM: number }> = {
+  warm:    { hex: '#fbbf24', emissive: '#f59e0b', labelFr: 'Blanc chaud 3000 K',  pricePerM: 800 },
+  neutral: { hex: '#fef3c7', emissive: '#fde68a', labelFr: 'Blanc neutre 4000 K', pricePerM: 820 },
+  cool:    { hex: '#bfdbfe', emissive: '#60a5fa', labelFr: 'Blanc froid 6000 K',  pricePerM: 850 },
+  rgb:     { hex: '#ec4899', emissive: '#ec4899', labelFr: 'RGB',                 pricePerM: 1400 },
+  rgbw:    { hex: '#f472b6', emissive: '#f472b6', labelFr: 'RGBW',                pricePerM: 1700 }
+}
 
 /** Per-type unit-price multipliers for BA13 plaques. Tenants can override. */
 export const PLAQUE_TYPE: Record<import('@/types').PlaqueType, { labelFr: string; labelAr: string; priceMultiplier: number; color: string }> = {

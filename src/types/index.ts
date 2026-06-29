@@ -13,6 +13,31 @@ export interface Room {
   length: number
   /** ceiling height in cm — needed for retombée drop volumetry and lighting */
   height: number
+  /** wall paint color, applied in 2D hint + 3D walls */
+  wallColor?: string
+  /** floor color */
+  floorColor?: string
+  /** ceiling color (under the BA13) */
+  ceilingColor?: string
+}
+
+/** Lighting condition for the 3D preview — affects ambient + LED/spot emissive. */
+export type LightingCondition = 'day' | 'evening' | 'night'
+
+/** LED strip color variants. */
+export type LedColor = 'warm' | 'neutral' | 'cool' | 'rgb' | 'rgbw'
+
+/** Lamp sub-kinds for the hanging fixtures library. */
+export type LampKind = 'pendant' | 'chandelier' | 'sconce' | 'plafonnier' | 'suspension'
+
+/** Windows on cloisons. */
+export interface CloisonWindow {
+  /** distance from cloison's start (in cm) */
+  x: number
+  width: number
+  height: number
+  /** sill height from floor, cm */
+  sill: number
 }
 
 export type ObjectKind =
@@ -25,6 +50,7 @@ export type ObjectKind =
   | 'multi-level'
   | 'obstacle'
   | 'cloison'
+  | 'lamp'
 
 /** BA13 plaque variants — different per-m² prices and use cases. */
 export type PlaqueType = 'standard' | 'hydrofuge' | 'ignifuge' | 'phonique'
@@ -65,6 +91,23 @@ export interface PlacedObject {
     thickness?: number
     /** for cloison — height in cm (full wall by default = room height) */
     wallHeight?: number
+    /** for cloison — window openings cut from both faces */
+    windows?: CloisonWindow[]
+    /** for led-strip — color variant */
+    ledColor?: LedColor
+    /** for led-strip — LEDs per linear m (60 / 120 / 240) */
+    ledDensity?: number
+    /** for led-strip — watts per linear m (5 / 9.6 / 14.4 typical) */
+    ledWattagePerM?: number
+    /** for lamp — kind variant */
+    lampKind?: LampKind
+    /** for lamp — suspension/hang height below ceiling in cm */
+    hangHeight?: number
+    /** for lamp — bulb count + wattage each */
+    bulbCount?: number
+    bulbWattage?: number
+    /** for lamp — bulb color temperature ('warm' | 'neutral' | 'cool') */
+    bulbColor?: 'warm' | 'neutral' | 'cool'
   }
 }
 

@@ -74,12 +74,13 @@ describe('calculate — sample salon', () => {
     expect(driver?.quantity).toBe(2)
   })
 
-  it('LED driver count matches the polyline length / 5 m', () => {
+  it('LED driver count comes from total wattage (60 W per driver)', () => {
     const led = calc.decorative.find((d) => d.kind === 'led-strip')
     const driver = calc.materials.find((m) => m.id === 'driver-led')
-    // sample salon LED loops 340+440+340+440 cm = 15.6 m -> ceil(15.6/5) = 4 drivers
+    // sample salon LED loops 340+440+340+440 cm = 15.6 m
+    // × 9.6 W/m = 150 W → ceil(150/60) = 3 drivers
     expect(led?.quantity).toBeGreaterThan(15)
-    expect(driver?.quantity).toBe(4)
+    expect(driver?.quantity).toBe(3)
   })
 
   it('totals are positive and timbre = 0 by default (bank payment)', () => {
@@ -160,6 +161,38 @@ describe('calculate — obstacles, layers, plaque types', () => {
     const pHyd = hyd.materials.find((m) => m.id === 'ba13')!
     expect(pHyd.unitPriceDZD).toBeGreaterThan(pStd.unitPriceDZD)
     expect(pHyd.unitPriceDZD / pStd.unitPriceDZD).toBeCloseTo(1.45, 1)
+  })
+
+  it('obstacle spanning multiple plaques marks every plaque it crosses', () => {
+    // Place a 200 × 50 cm obstacle straddling the boundary between plaques
+    // #1 (col0/row0) and #2 (col1/row0) in a 400 × 500 room.
+    const calc = calculate(
+      blankDesign({
+        objects: [
+          {
+            id: 'big-obstacle',
+            kind: 'obstacle',
+            moduleId: 'obstacle-cheminee',
+            x: 110, y: 100, width: 200, height: 50, rotation: 0,
+            data: { label: 'poutre' }
+          }
+        ]
+      })
+    )
+    const plaquesWithCutouts = calc.plaqueLayout.plaques.filter((p) => p.cutouts?.length)
+    expect(plaquesWithCutouts.length).toBeGreaterThanOrEqual(2)
+    // Total cutout area across all affected plaques must equal the obstacle area (200*50 = 10000 cm² = 1 m²)
+    const totalCutoutM2 = plaquesWithCutouts.reduce(
+      (sum, p) => sum + (p.cutouts ?? []).reduce((s, c) => s + (c.w * c.h) / 10_000, 0),
+      0
+    )
+    expect(totalCutoutM2).toBeCloseTo(1, 3)
+    // Billable surface drops by exactly the obstacle footprint
+    expect(calc.geometry.billableM2).toBeCloseTo(20 - 1, 3)
+    // Cornière now wraps the obstacle perimeter (2*(2+0.5) = 5 m extra)
+    const corniere = calc.materials.find((m) => m.id === 'corniere')!
+    const ref = calculate(blankDesign()).materials.find((m) => m.id === 'corniere')!
+    expect(corniere.rawQuantity - ref.rawQuantity).toBeCloseTo(5 * 1.10, 1)
   })
 
   it('cloison adds both faces to billable area', () => {

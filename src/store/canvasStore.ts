@@ -101,7 +101,14 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                     points: [
                       { x: 0, y: 0 },
                       { x: mod.defaultWidthCm, y: 0 }
-                    ]
+                    ],
+                    ledColor:
+                      mod.id.includes('cool') ? 'cool'
+                      : mod.id.includes('rgb') ? 'rgb'
+                      : mod.id.includes('neutral') ? 'neutral'
+                      : 'warm',
+                    ledDensity: 60,
+                    ledWattagePerM: 9.6
                   }
                 : mod.kind === 'retombee'
                   ? { drop: 25 }
@@ -110,8 +117,21 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                     : mod.kind === 'obstacle'
                       ? { label: mod.labelFr.split(' ')[0].toLowerCase() }
                       : mod.kind === 'cloison'
-                        ? { thickness: 7, wallHeight: 270 }
-                        : undefined
+                        ? { thickness: 7, wallHeight: 270, windows: [] }
+                        : mod.kind === 'lamp'
+                          ? {
+                              lampKind:
+                                mod.id.includes('chandelier') ? 'chandelier'
+                                : mod.id.includes('pendant') ? 'pendant'
+                                : mod.id.includes('plafonnier') ? 'plafonnier'
+                                : mod.id.includes('sconce') ? 'sconce'
+                                : 'suspension',
+                              hangHeight: mod.id.includes('plafonnier') ? 0 : 80,
+                              bulbCount: mod.id.includes('chandelier') ? 5 : 1,
+                              bulbWattage: mod.id.includes('plafonnier') ? 36 : 40,
+                              bulbColor: 'warm'
+                            }
+                          : undefined
         }
         s.objects.push(obj)
         s.selectionId = id

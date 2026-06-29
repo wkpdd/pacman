@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { useCanvasStore } from '@/store/canvasStore'
-import { findModule } from '@/modules/faux-plafond/library'
+import { findModule, LED_COLOR_INFO } from '@/modules/faux-plafond/library'
 import { LayersPanel } from './LayersPanel'
+import type { LedColor } from '@/types'
 
 export function PropertiesPanel(): React.JSX.Element {
   const { t } = useTranslation()
@@ -46,6 +47,11 @@ export function PropertiesPanel(): React.JSX.Element {
           onChange={(v) => setRoom({ height: v })}
           suffix="cm"
         />
+        <div className="color-row">
+          <ColorPicker label="Murs" value={room.wallColor ?? '#fafafa'} onChange={(c) => setRoom({ wallColor: c })} />
+          <ColorPicker label="Sol" value={room.floorColor ?? '#f1f5f9'} onChange={(c) => setRoom({ floorColor: c })} />
+          <ColorPicker label="Plafond" value={room.ceilingColor ?? '#ffffff'} onChange={(c) => setRoom({ ceilingColor: c })} />
+        </div>
       </section>
 
       {obj && (
@@ -66,14 +72,64 @@ export function PropertiesPanel(): React.JSX.Element {
             </div>
           )}
           {obj.kind === 'led-strip' && (
-            <label className="toggle">
-              <input
-                type="checkbox"
-                checked={!!obj.data?.curved}
-                onChange={(e) => patchData(obj.id, { curved: e.target.checked })}
-              />
-              <span>Tracé courbe</span>
-            </label>
+            <>
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={!!obj.data?.curved}
+                  onChange={(e) => patchData(obj.id, { curved: e.target.checked })}
+                />
+                <span>Tracé courbe</span>
+              </label>
+              <label className="num-field">
+                <span>Couleur</span>
+                <span className="num-control">
+                  <select
+                    value={obj.data?.ledColor ?? 'warm'}
+                    onChange={(e) => patchData(obj.id, { ledColor: e.target.value as LedColor })}
+                  >
+                    {Object.entries(LED_COLOR_INFO).map(([k, info]) => (
+                      <option key={k} value={k}>{info.labelFr}</option>
+                    ))}
+                  </select>
+                </span>
+              </label>
+              <div className="prop-grid">
+                <NumField
+                  label="Densité"
+                  value={obj.data?.ledDensity ?? 60}
+                  min={30} max={240} step={30} suffix="LED/m"
+                  onChange={(v) => patchData(obj.id, { ledDensity: v })}
+                />
+                <NumField
+                  label="Puissance"
+                  value={obj.data?.ledWattagePerM ?? 9.6}
+                  min={2} max={30} step={0.4} suffix="W/m"
+                  onChange={(v) => patchData(obj.id, { ledWattagePerM: v })}
+                />
+              </div>
+              <div className="led-swatch" style={{ background: LED_COLOR_INFO[obj.data?.ledColor ?? 'warm'].hex }} />
+            </>
+          )}
+          {obj.kind === 'lamp' && (
+            <div className="prop-grid">
+              <NumField label="Suspension" value={obj.data?.hangHeight ?? 80} min={0} step={10} suffix="cm" onChange={(v) => patchData(obj.id, { hangHeight: v })} />
+              <NumField label="Ampoules" value={obj.data?.bulbCount ?? 1} min={1} max={20} step={1} onChange={(v) => patchData(obj.id, { bulbCount: v })} />
+              <NumField label="W / ampoule" value={obj.data?.bulbWattage ?? 40} min={5} step={5} suffix="W" onChange={(v) => patchData(obj.id, { bulbWattage: v })} />
+              <label className="num-field">
+                <span>Couleur</span>
+                <span className="num-control">
+                  <select
+                    value={obj.data?.bulbColor ?? 'warm'}
+                    onChange={(e) => patchData(obj.id, { bulbColor: e.target.value as 'warm' | 'neutral' | 'cool' })}
+                  >
+                    <option value="warm">Chaud</option>
+                    <option value="neutral">Neutre</option>
+                    <option value="cool">Froid</option>
+                  </select>
+                </span>
+              </label>
+            </div>
           )}
           {obj.kind === 'retombee' && (
             <NumField
@@ -97,25 +153,55 @@ export function PropertiesPanel(): React.JSX.Element {
             </label>
           )}
           {obj.kind === 'cloison' && (
-            <div className="prop-grid">
-              <NumField
-                label="Épaisseur"
-                value={obj.data?.thickness ?? 7}
-                min={5}
-                max={20}
-                step={1}
-                suffix="cm"
-                onChange={(v) => patchData(obj.id, { thickness: v })}
-              />
-              <NumField
-                label="Hauteur"
-                value={obj.data?.wallHeight ?? room.height}
-                min={50}
-                step={10}
-                suffix="cm"
-                onChange={(v) => patchData(obj.id, { wallHeight: v })}
-              />
-            </div>
+            <>
+              <div className="prop-grid">
+                <NumField label="Épaisseur" value={obj.data?.thickness ?? 7} min={5} max={20} step={1} suffix="cm" onChange={(v) => patchData(obj.id, { thickness: v })} />
+                <NumField label="Hauteur" value={obj.data?.wallHeight ?? room.height} min={50} step={10} suffix="cm" onChange={(v) => patchData(obj.id, { wallHeight: v })} />
+              </div>
+              <div className="windows-editor">
+                <header className="windows-header">
+                  <strong>Fenêtres</strong>
+                  <button
+                    className="btn-add-window"
+                    onClick={() => {
+                      const w = obj.data?.windows ?? []
+                      patchData(obj.id, {
+                        windows: [...w, { x: w.length * 100 + 20, width: 80, height: 100, sill: 100 }]
+                      })
+                    }}
+                  >+ Ajouter</button>
+                </header>
+                {(obj.data?.windows ?? []).map((win, idx) => (
+                  <div key={idx} className="window-row">
+                    <span className="window-label">F{idx + 1}</span>
+                    <NumField label="X" value={win.x} step={5} suffix="cm" onChange={(v) => {
+                      const ws = [...(obj.data?.windows ?? [])]
+                      ws[idx] = { ...ws[idx], x: v }
+                      patchData(obj.id, { windows: ws })
+                    }} />
+                    <NumField label="L" value={win.width} step={5} suffix="cm" onChange={(v) => {
+                      const ws = [...(obj.data?.windows ?? [])]
+                      ws[idx] = { ...ws[idx], width: v }
+                      patchData(obj.id, { windows: ws })
+                    }} />
+                    <NumField label="H" value={win.height} step={5} suffix="cm" onChange={(v) => {
+                      const ws = [...(obj.data?.windows ?? [])]
+                      ws[idx] = { ...ws[idx], height: v }
+                      patchData(obj.id, { windows: ws })
+                    }} />
+                    <NumField label="Allège" value={win.sill} step={5} suffix="cm" onChange={(v) => {
+                      const ws = [...(obj.data?.windows ?? [])]
+                      ws[idx] = { ...ws[idx], sill: v }
+                      patchData(obj.id, { windows: ws })
+                    }} />
+                    <button className="layer-icon-btn danger" onClick={() => {
+                      const ws = (obj.data?.windows ?? []).filter((_, i) => i !== idx)
+                      patchData(obj.id, { windows: ws })
+                    }}>🗑</button>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
           {obj.kind === 'corniche' && (
             <div className="corniche-controls">
@@ -165,6 +251,15 @@ export function PropertiesPanel(): React.JSX.Element {
         </section>
       )}
     </aside>
+  )
+}
+
+function ColorPicker({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="color-picker">
+      <span>{label}</span>
+      <input type="color" value={value} onChange={(e) => onChange(e.target.value)} />
+    </label>
   )
 }
 

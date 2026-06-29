@@ -827,25 +827,55 @@ function ObjectShape({
   // Cloison (interior wall partition — viewed in plan as a thick line)
   if (obj.kind === 'cloison') {
     const t = Math.max(6, obj.data?.thickness ?? 7)
+    const windows = obj.data?.windows ?? []
     return (
       <Group {...common}>
         <Rect width={obj.width} height={t} fill="#cbd5e1" stroke="#0f172a" strokeWidth={1.4 / scale} />
-        {/* studs every 60 cm */}
         {Array.from({ length: Math.floor(obj.width / 60) + 1 }, (_, i) => (
-          <Line
-            key={i}
-            points={[i * 60, 0, i * 60, t]}
-            stroke="#475569"
-            strokeWidth={1 / scale}
-          />
+          <Line key={i} points={[i * 60, 0, i * 60, t]} stroke="#475569" strokeWidth={1 / scale} />
+        ))}
+        {/* Window openings: light blue band so the user can see where they are in plan */}
+        {windows.map((w, idx) => (
+          <Group key={`win-${idx}`}>
+            <Rect x={w.x} y={0} width={w.width} height={t} fill="#bae6fd" stroke="#0ea5e9" strokeWidth={1.2 / scale} />
+            <Text x={w.x + 2} y={t + 2 / scale} text="🪟" fontSize={10 / scale} />
+          </Group>
         ))}
         {selected && (
           <Text
             x={0}
-            y={t + 6 / scale}
-            text={`Cloison ${(obj.width / 100).toFixed(2)} m × H ${((obj.data?.wallHeight ?? room.height) / 100).toFixed(2)} m`}
+            y={t + 14 / scale}
+            text={`Cloison ${(obj.width / 100).toFixed(2)} m × H ${((obj.data?.wallHeight ?? room.height) / 100).toFixed(2)} m${windows.length ? `  ·  ${windows.length} fenêtre(s)` : ''}`}
             fontSize={12 / scale}
             fill="#0f172a"
+          />
+        )}
+      </Group>
+    )
+  }
+
+  // Lamp (top-down view: ring + bulb glow halo, color = bulb temperature)
+  if (obj.kind === 'lamp') {
+    const cx = obj.width / 2
+    const cy = obj.height / 2
+    const r = obj.width / 2
+    const bulbCol = obj.data?.bulbColor === 'cool' ? '#bfdbfe'
+      : obj.data?.bulbColor === 'neutral' ? '#fef3c7'
+      : '#fbbf24'
+    return (
+      <Group {...common}>
+        <Circle x={cx} y={cy} radius={r * 1.5} fill={bulbCol} opacity={0.18} />
+        <Circle x={cx} y={cy} radius={r * 1.1} fill={bulbCol} opacity={0.3} />
+        <Circle x={cx} y={cy} radius={r * 0.85} fill="#7c3aed" stroke="#0f172a" strokeWidth={1.2 / scale} />
+        <Circle x={cx} y={cy} radius={r * 0.5} fill={bulbCol} />
+        <Circle x={cx} y={cy} radius={r * 0.2} fill="#fffbeb" />
+        {selected && (
+          <Text
+            x={4}
+            y={obj.height + 4}
+            text={`${obj.data?.bulbCount ?? 1} × ${obj.data?.bulbWattage ?? 40} W`}
+            fontSize={12 / scale}
+            fill="#7c3aed"
           />
         )}
       </Group>

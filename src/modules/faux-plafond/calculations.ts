@@ -46,7 +46,11 @@ export interface CalcResult {
     retombeeVerticalM2: number
     obstacleAreaM2: number
     cloisonAreaM2: number
+    windowAreaM2: number
     billableM2: number
+    ledTotalM: number
+    ledTotalWatts: number
+    lampTotalWatts: number
   }
   materials: MaterialLine[]
   decorative: DecorativeLine[]
@@ -90,14 +94,22 @@ export function calculate(design: Design): CalcResult {
   }
 
   // ---- Cloisons: full surface = length × wallHeight × 2 sides (BA13 both faces)
+  // Windows in the cloison are subtracted from both faces.
   let cloisonAreaM2 = 0
   let cloisonLengthM = 0
+  let windowAreaM2 = 0
   for (const o of objects) {
     if (o.kind !== 'cloison') continue
     const length = cmToM(o.width)
     const height = cmToM(o.data?.wallHeight ?? room.height)
     cloisonLengthM += length
-    cloisonAreaM2 += length * height * 2 // both sides
+    let cloisonGross = length * height * 2
+    for (const w of o.data?.windows ?? []) {
+      const windowM2 = cmToM(w.width) * cmToM(w.height)
+      windowAreaM2 += windowM2 * 2 // both faces
+      cloisonGross -= windowM2 * 2
+    }
+    cloisonAreaM2 += Math.max(0, cloisonGross)
   }
 
   const billableM2 =
@@ -163,10 +175,12 @@ export function calculate(design: Design): CalcResult {
     line(MATERIAL_DEFAULTS.enduitJoint, enduitRaw / (MATERIAL_DEFAULTS.enduitJoint.unitSize ?? 25), 1)
   )
 
-  // ---- Decorative + obstacle + cloison lines (from placed objects) ----
+  // ---- Decorative + obstacle + cloison + lamp lines (from placed objects) ----
   const decorative: DecorativeLine[] = []
   let spotCount = 0
   let ledTotalM = 0
+  let ledTotalWatts = 0
+  let lampTotalWatts = 0
 
   for (const o of objects) {
     const mod = findModule(o.moduleId)
@@ -180,18 +194,35 @@ export function calculate(design: Design): CalcResult {
       spotCount += rows * cols
     }
     if (o.kind === 'led-strip') {
-      ledTotalM += polylineLengthM(o.data?.points ?? [{ x: 0, y: 0 }, { x: o.width, y: 0 }])
+      const len = polylineLengthM(o.data?.points ?? [{ x: 0, y: 0 }, { x: o.width, y: 0 }])
+      ledTotalM += len
+      ledTotalWatts += len * (o.data?.ledWattagePerM ?? 9.6)
+    }
+    if (o.kind === 'lamp') {
+      lampTotalWatts += (o.data?.bulbCount ?? 1) * (o.data?.bulbWattage ?? 40)
     }
   }
 
+  // LED drivers — size to wattage (each driver handles up to 60 W typically).
+  // Falls back to the legacy 5 m/driver rule only when wattage is 0.
   if (ledTotalM > 0) {
-    const drivers = Math.ceil(ledTotalM / (MATERIAL_DEFAULTS.driverLED.unitSize ?? 5))
-    materials.push(line(MATERIAL_DEFAULTS.driverLED, drivers, 1, `pour ${ledTotalM.toFixed(1)} ml`))
+    const drivers = ledTotalWatts > 0
+      ? Math.max(1, Math.ceil(ledTotalWatts / 60))
+      : Math.ceil(ledTotalM / (MATERIAL_DEFAULTS.driverLED.unitSize ?? 5))
+    materials.push(
+      line(
+        MATERIAL_DEFAULTS.driverLED, drivers, 1,
+        `${ledTotalM.toFixed(1)} ml${ledTotalWatts > 0 ? ` · ${ledTotalWatts.toFixed(0)} W` : ''}`
+      )
+    )
   }
   if (spotCount > 0) {
     const drivers = Math.ceil(spotCount / (MATERIAL_DEFAULTS.driverSpot.unitSize ?? 6))
     materials.push(line(MATERIAL_DEFAULTS.driverSpot, drivers, 1, `pour ${spotCount} spots`))
   }
+  // Total lamp wattage is informational; reuse the line() helper with a
+  // synthetic "lamp" material if we want a budget breakdown later.
+  void lampTotalWatts
 
   // ---- Pricing ----
   const materialsHT = [...materials, ...decorative].reduce((s, l) => s + l.totalDZD, 0)
@@ -213,7 +244,11 @@ export function calculate(design: Design): CalcResult {
       retombeeVerticalM2,
       obstacleAreaM2,
       cloisonAreaM2,
-      billableM2
+      windowAreaM2,
+      billableM2,
+      ledTotalM,
+      ledTotalWatts,
+      lampTotalWatts
     },
     materials,
     decorative,
@@ -299,6 +334,11 @@ function decorativeFor(
     case 'cloison': {
       qty = cmToM(o.width) * cmToM(o.data?.wallHeight ?? 270)
       unit = 'm²'
+      break
+    }
+    case 'lamp': {
+      qty = 1
+      unit = 'unit'
       break
     }
   }

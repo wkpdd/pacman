@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useCanvasStore } from '@/store/canvasStore'
-import { findModule } from '@/modules/faux-plafond/library'
+import { findModule, KIND_COLOR } from '@/modules/faux-plafond/library'
 import type { ObjectKind, PlacedObject } from '@/types'
 
 const KIND_ICON: Record<ObjectKind, string> = {
@@ -12,7 +12,8 @@ const KIND_ICON: Record<ObjectKind, string> = {
   retombee: '▢',
   'multi-level': '☁',
   obstacle: '⨯',
-  cloison: '∥'
+  cloison: '∥',
+  lamp: '💡'
 }
 
 /**
@@ -134,6 +135,7 @@ function LayerRow({
       onDrop={onDrop}
       onDragEnd={onDragEnd}
       title={`#${idx + 1} · ${name}`}
+      style={{ ['--kind-color' as string]: KIND_COLOR[obj.kind] }}
     >
       <button
         className="layer-icon-btn"

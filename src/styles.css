@@ -456,6 +456,60 @@ input:focus, select:focus, textarea:focus {
   color: var(--ink);
 }
 .layer-pos { font-size: 10px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.layer-row {
+  border-left: 4px solid var(--kind-color, transparent);
+}
+.layer-row.on { border-left-color: var(--tint); }
+
+/* Color pickers */
+.color-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+.color-picker { display: grid; gap: 4px; font-size: 12px; color: var(--ink-soft); }
+.color-picker input[type="color"] {
+  width: 100%; height: 32px; padding: 2px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--line);
+  min-height: 0;
+}
+
+/* LED swatch */
+.led-swatch {
+  height: 12px; border-radius: 6px; border: 1px solid var(--line);
+  margin-top: 4px;
+  box-shadow: 0 0 12px currentColor;
+}
+
+/* Window editor */
+.windows-editor { display: grid; gap: 8px; margin-top: 8px; }
+.windows-header { display: flex; justify-content: space-between; align-items: center; }
+.btn-add-window {
+  background: var(--tint); color: var(--ink); border: 0;
+  padding: 6px 10px; border-radius: 8px; font-weight: 600; font-size: 12px;
+  min-height: 32px;
+}
+.window-row {
+  display: grid;
+  grid-template-columns: auto repeat(4, 1fr) auto;
+  gap: 4px;
+  align-items: end;
+  padding: 4px;
+  background: var(--surface-2);
+  border-radius: 8px;
+}
+.window-row .window-label { font-weight: 700; color: var(--ink-soft); font-size: 12px; }
+.window-row .num-field { font-size: 11px; }
+
+/* Lighting switch on the 3D header */
+.lighting-switch { display: flex; gap: 4px; }
+.lighting-switch button {
+  background: #1e293b;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  min-height: 32px;
+}
+.lighting-switch button.on { background: var(--tint); color: var(--ink); border-color: var(--tint); }
 
 /* Cost panel */
 .cost-panel { display: flex; flex-direction: column; gap: 0; }
