@@ -217,6 +217,37 @@ describe('calculate — obstacles, layers, plaque types', () => {
     expect(plaque.quantity).toBe(9)
   })
 
+  it('cloison plaque count uses the smart layout per face, not area/3', () => {
+    // 3 m × 2.70 m cloison, both faces.
+    // Per face (300 × 270 cm) smart layout:
+    //   cols: 300/120 = 2.5 → 3 cols (last is 60 cm wide)
+    //   rows: 270/250 = 1.08 → 2 rows (last is 20 cm tall)
+    //   3 × 2 = 6 cells. Smart count:
+    //     - (0,0), (1,0): full → 2 plaques
+    //     - (0,1), (1,1): length strips 120 × 20 → ceil(40/250)=1 plaque
+    //     - (2,0): width strip 60 × 250 → ceil(60/120)=1 plaque
+    //     - (2,1): corner 60 × 20 → 1 plaque
+    //   Per face = 5 plaques → both faces = 10
+    // Plus 10% waste = 11 plaques for the cloison alone.
+    const calc = calculate(
+      blankDesign({
+        objects: [
+          {
+            id: 'wall',
+            kind: 'cloison',
+            moduleId: 'cloison-standard',
+            x: 50, y: 200, width: 300, height: 7, rotation: 0,
+            data: { thickness: 7, wallHeight: 270 }
+          }
+        ]
+      })
+    )
+    // Ceiling (4×5 m) needs 7 fresh + 10% waste → 8 plaques.
+    // Cloison adds 11. Total → 19 plaques on the BA13 line.
+    const plaque = calc.materials.find((m) => m.id === 'ba13')!
+    expect(plaque.quantity).toBe(8 + 11)
+  })
+
   it('cloison adds both faces to billable area', () => {
     const calc = calculate(
       blankDesign({

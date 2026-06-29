@@ -53,6 +53,20 @@ export function layoutPlaques(room: Room, obstacles: PlacedObject[]): LayoutResu
   return a.wasteM2 <= b.wasteM2 ? a : b
 }
 
+/**
+ * Count fresh plaques required to cover an arbitrary flat surface of
+ * (widthCm × heightCm) using the same smart cut-combining rules as a
+ * ceiling face. Used for cloison faces — a 3 m × 2.70 m wall isn't
+ * area/3 plaques because of the cut overhead at the wall's edges.
+ */
+export function countPlaquesForFace(widthCm: number, heightCm: number): number {
+  if (widthCm <= 0 || heightCm <= 0) return 0
+  const fakeRoom: Room = { width: widthCm, length: heightCm, height: 270 }
+  const a = layoutInOrientation(fakeRoom, [], false)
+  const b = layoutInOrientation(fakeRoom, [], true)
+  return Math.min(a.fullPlaquesNeeded, b.fullPlaquesNeeded)
+}
+
 function layoutInOrientation(
   room: Room,
   obstacles: PlacedObject[],

@@ -9,7 +9,7 @@ import {
 import { computeTotals } from '@/utils/fiscal'
 import { PLAQUE_TYPE, findModule } from './library'
 import { MATERIAL_DEFAULTS, RATIOS } from './defaults'
-import { layoutPlaques } from './plaqueLayout'
+import { countPlaquesForFace, layoutPlaques } from './plaqueLayout'
 
 export interface MaterialLine {
   id: string
@@ -95,9 +95,13 @@ export function calculate(design: Design): CalcResult {
 
   // ---- Cloisons: full surface = length × wallHeight × 2 sides (BA13 both faces)
   // Windows in the cloison are subtracted from both faces.
+  // Plaque count per cloison runs the smart layout on (length × wallHeight)
+  // and doubles for both BA13 faces — area/3 underestimated by ~30% because
+  // of the cut overhead at the edges of every wall.
   let cloisonAreaM2 = 0
   let cloisonLengthM = 0
   let windowAreaM2 = 0
+  let cloisonPlaquesExact = 0
   for (const o of objects) {
     if (o.kind !== 'cloison') continue
     const length = cmToM(o.width)
@@ -110,6 +114,10 @@ export function calculate(design: Design): CalcResult {
       cloisonGross -= windowM2 * 2
     }
     cloisonAreaM2 += Math.max(0, cloisonGross)
+    // Layout per face — cm input
+    const faceW = o.width
+    const faceH = o.data?.wallHeight ?? room.height
+    cloisonPlaquesExact += countPlaquesForFace(faceW, faceH) * 2 // both sides
   }
 
   const billableM2 =
@@ -121,10 +129,11 @@ export function calculate(design: Design): CalcResult {
 
   const materials: MaterialLine[] = []
 
-  // Plaques: ceiling from layout, retombée + cloison by area. Times layer count.
+  // Plaques: ceiling + cloison from the smart layout (so cut overhead is
+  // counted), retombée still by area since its shape varies (drop boxes).
   const ceilingPlaques = Math.ceil(plaqueLayout.fullPlaquesNeeded * (1 + wastePct))
   const retombeePlaques = Math.ceil(((retombeeAreaM2 + retombeeVerticalM2) * (1 + wastePct)) / 3)
-  const cloisonPlaques = Math.ceil((cloisonAreaM2 * (1 + wastePct)) / 3)
+  const cloisonPlaques = Math.ceil(cloisonPlaquesExact * (1 + wastePct))
   const plaquesNeeded = (ceilingPlaques + retombeePlaques + cloisonPlaques) * layerCount
   const plaqueLine = {
     ...MATERIAL_DEFAULTS.plaqueBA13,
@@ -134,7 +143,7 @@ export function calculate(design: Design): CalcResult {
   const breakdownParts = [
     `${ceilingPlaques} plafond`,
     retombeePlaques ? `${retombeePlaques} retombée` : null,
-    cloisonPlaques ? `${cloisonPlaques} cloison` : null,
+    cloisonPlaques ? `${cloisonPlaques} cloison (2 faces)` : null,
     layerCount > 1 ? `×${layerCount} couches` : null,
     `${(wastePct * 100).toFixed(0)}% perte`
   ].filter(Boolean).join(' · ')
